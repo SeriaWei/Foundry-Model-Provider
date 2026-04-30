@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+out/
+dist/
+
+# VS Code test
+.vscode-test/
+
+# TypeScript
+*.js.map
+
+# Package
+*.vsix
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local

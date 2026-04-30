@@ -1,0 +1,178 @@
+{
+  "name": "foundry-model-provider",
+  "displayName": "Foundry Model Provider",
+  "description": "A VS Code extension that provides Microsoft Foundry LLM models as chat model providers for GitHub Copilot Chat",
+  "version": "0.1.0",
+  "publisher": "foundry",
+  "engines": {
+    "vscode": "^1.116.0"
+  },
+  "enabledApiProposals": [
+    "chatProvider"
+  ],
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "keywords": [
+    "copilot",
+    "chat",
+    "ai",
+    "foundry",
+    "language model"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languageModelChatProviders": [
+      {
+        "vendor": "foundry",
+        "displayName": "Foundry Model Provider"
+      }
+    ],
+    "configuration": {
+      "title": "Foundry Model Provider",
+      "properties": {
+        "foundryModelProvider.endpoint": {
+          "type": "string",
+          "default": "",
+          "description": "The Microsoft Foundry API endpoint URL (e.g., https://your-service.services.ai.azure.com/openai/v1)"
+        },
+        "foundryModelProvider.models": {
+          "type": "array",
+          "default": [
+            {
+              "id": "gpt-4.1",
+              "name": "GPT-4.1",
+              "family": "gpt-4.1",
+              "version": "2024-04-01",
+              "maxInputTokens": 128000,
+              "maxOutputTokens": 16384,
+              "capabilities": {
+                "imageInput": true,
+                "toolCalling": true,
+                "thinking": false
+              }
+            }
+          ],
+          "description": "List of available Foundry models to register",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "The deployment name / model ID used in API calls"
+              },
+              "name": {
+                "type": "string",
+                "description": "Display name shown in the model picker"
+              },
+              "family": {
+                "type": "string",
+                "description": "Model family (e.g., gpt-4o, gpt-4.1, o1)"
+              },
+              "version": {
+                "type": "string",
+                "description": "Model version string"
+              },
+              "maxInputTokens": {
+                "type": "number",
+                "default": 128000,
+                "description": "Maximum input tokens supported"
+              },
+              "maxOutputTokens": {
+                "type": "number",
+                "default": 16384,
+                "description": "Maximum output tokens supported"
+              },
+              "capabilities": {
+                "type": "object",
+                "properties": {
+                  "imageInput": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Whether the model supports image input"
+                  },
+                  "toolCalling": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether the model supports tool/function calling"
+                  },
+                  "thinking": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Whether the model supports extended thinking (reasoning models like o1)"
+                  }
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "family"
+            ]
+          }
+        },
+        "foundryModelProvider.defaultParameters": {
+          "type": "object",
+          "default": {
+            "temperature": 0.7,
+            "topP": 1
+          },
+          "description": "Default parameters for model requests",
+          "properties": {
+            "temperature": {
+              "type": "number",
+              "default": 0.7,
+              "minimum": 0,
+              "maximum": 2,
+              "description": "Sampling temperature (0-2)"
+            },
+            "topP": {
+              "type": "number",
+              "default": 1,
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Top-p sampling parameter"
+            }
+          }
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "foundryModelProvider.setApiKey",
+        "title": "Set API Key",
+        "category": "Foundry Model Provider"
+      },
+      {
+        "command": "foundryModelProvider.clearApiKey",
+        "title": "Clear API Key",
+        "category": "Foundry Model Provider"
+      },
+      {
+        "command": "foundryModelProvider.refreshModels",
+        "title": "Refresh Models",
+        "category": "Foundry Model Provider"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
+    "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
+    "compile": "tsc -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.116.0",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "openai": "^4.75.0"
+  }
+}
