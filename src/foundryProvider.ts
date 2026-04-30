@@ -128,6 +128,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
         const info: FoundryModelInfo = {
             id: model.id,
             name: model.name,
+            tooltip: `Foundry Model: ${model.name} (${model.family})`,
             family: model.family,
             version: model.version || '1.0',
             maxInputTokens: model.maxInputTokens,
@@ -208,22 +209,22 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
      * Convert stream response part to VS Code response part
      */
     private convertToResponsePart(part: StreamResponsePart): vscode.LanguageModelResponsePart | null {
-        if (part.type === 'text') {
-            return new vscode.LanguageModelTextPart(part.value);
-        } else if (part.type === 'thinking') {
-            // Use proposed LanguageModelThinkingPart for reasoning content
-            // Cast needed because ThinkingPart is proposed API not in stable LanguageModelResponsePart union
-            //return new vscode.LanguageModelThinkingPart(part.value) as unknown as vscode.LanguageModelResponsePart;
-            
-        } else if (part.type === 'toolCall') {
-            return new vscode.LanguageModelToolCallPart(
-                part.callId,
-                part.name,
-                part.input
-            );
+        switch (part.type) {
+            case 'text':
+                return new vscode.LanguageModelTextPart(part.value);
+            case 'thinking':
+                // TODO: Use LanguageModelThinkingPart when it becomes stable API
+                // For now, skip thinking content as it's not in the stable response part union
+                return null;
+            case 'toolCall':
+                return new vscode.LanguageModelToolCallPart(
+                    part.callId,
+                    part.name,
+                    part.input
+                );
+            default:
+                return null;
         }
-        // Should never reach here
-        return new vscode.LanguageModelTextPart('');
     }
 
     /**
