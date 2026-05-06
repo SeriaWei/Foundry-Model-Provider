@@ -215,6 +215,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
             case 'thinking':
                 // TODO: Use LanguageModelThinkingPart when it becomes stable API
                 // For now, skip thinking content as it's not in the stable response part union
+                //return new vscode.LanguageModelThinkingPart(part.value);
                 return null;
             case 'toolCall':
                 return new vscode.LanguageModelToolCallPart(

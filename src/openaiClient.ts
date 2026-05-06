@@ -83,7 +83,10 @@ export class FoundryOpenAIClient {
                     if (part.type === 'text') {
                         return { type: textType, text: part.text as string };
                     } else if (part.type === 'image_url') {
-                        return { type: 'input_image', image_url: part.image_url };
+                        // Chat Completions uses { image_url: { url: "data:mime;base64,..." } }
+                        // Responses API uses { type: 'input_image', image_url: "data:..." } (flat string)
+                        const imageUrl = (part.image_url as Record<string, string>)?.url ?? '';
+                        return { type: 'input_image', image_url: imageUrl };
                     }
                     return part as {type: string};
                 });

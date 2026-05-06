@@ -34,6 +34,10 @@ async function testResponsesAPI() {
                 model: deploymentName,
                 input: 'solve 8x + 31 = 2',
             })
+            .on('response.start', (response) => {
+                console.log("Response started:", response);
+            })
+            .on('response.reasoning_summary_text.delta', (diff) => process.stdout.write(diff.delta))
             .on('response.output_text.delta', (diff) => process.stdout.write(diff.delta));
 
         for await (const event of runner) {
