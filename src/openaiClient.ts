@@ -249,7 +249,7 @@ export class FoundryOpenAIClient {
         };
 
         if (modelOptions?.maxTokens) {
-            requestParams.max_tokens = modelOptions.maxTokens as number;
+            requestParams.max_completion_tokens = modelOptions.maxTokens as number;
         }
 
         if (tools && tools.length > 0) {
