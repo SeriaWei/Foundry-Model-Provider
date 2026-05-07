@@ -93,7 +93,7 @@ Each model in `foundryModelProvider.models` can have:
       "id": "gpt-4.1",
       "name": "GPT-4.1",
       "family": "Foundry",
-      "version": "2024-04-01",
+      "version": "2025-04-14",
       "maxInputTokens": 128000,
       "maxOutputTokens": 16384,
       "capabilities": {
