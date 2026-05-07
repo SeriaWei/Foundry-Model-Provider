@@ -129,6 +129,14 @@ export class FoundryOpenAIClient {
             }));
         }
 
+        const apiType = model.apiType ?? 'auto';
+        this.outputChannel.debug(`API type: ${apiType}`);
+
+        if (apiType === 'completions') {
+            yield* this.streamChatCompletions(model, inputMessages, tools, toolMode, modelOptions, defaultParameters, token);
+            return;
+        }
+
         try {
             this.outputChannel.debug(`Request payload: ${JSON.stringify(requestParams, null, 2)}`);
             const runner = this.client.responses.stream(requestParams);
@@ -199,8 +207,95 @@ export class FoundryOpenAIClient {
                 }
             }
         } catch (error) {
+            // If 'auto' mode and API returned 404/405, fall back to Chat Completions
+            if (apiType === 'auto' && error instanceof OpenAI.APIError && (error.status === 404 || error.status === 405)) {
+                this.outputChannel.warn(`Responses API failed (${error.status}), falling back to Chat Completions API`);
+                yield* this.streamChatCompletions(model, inputMessages, tools, toolMode, modelOptions, defaultParameters, token);
+                return;
+            }
             this.outputChannel.error(`API request failed: ${error}`);
             this.outputChannel.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
+            throw this.wrapError(error);
+        }
+    }
+
+    /**
+     * Stream using Chat Completions API
+     */
+    private async *streamChatCompletions(
+        model: FoundryModelConfig,
+        inputMessages: Array<{ role: string; content: unknown }>,
+        tools: readonly vscode.LanguageModelChatTool[] | undefined,
+        toolMode: vscode.LanguageModelChatToolMode | undefined,
+        modelOptions: Record<string, unknown> | undefined,
+        defaultParameters: FoundryDefaultParameters,
+        token: vscode.CancellationToken
+    ): AsyncGenerator<StreamResponsePart> {
+        const requestParams: OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
+            model: model.id,
+            messages: inputMessages.map(m => ({
+                role: m.role as 'user' | 'assistant' | 'system',
+                content: Array.isArray(m.content)
+                    ? (m.content as Array<Record<string, unknown>>).map(p => {
+                        if (p.type === 'input_text') return { type: 'text', text: p.text };
+                        if (p.type === 'output_text') return { type: 'text', text: p.text };
+                        if (p.type === 'input_image') return { type: 'image_url', image_url: { url: p.image_url } };
+                        return p;
+                    })
+                    : m.content as string
+            })) as OpenAI.Chat.ChatCompletionMessageParam[],
+            stream: true,
+            temperature: (modelOptions?.temperature as number) ?? defaultParameters.temperature ?? 0.7,
+        };
+
+        if (modelOptions?.maxTokens) {
+            requestParams.max_tokens = modelOptions.maxTokens as number;
+        }
+
+        if (tools && tools.length > 0) {
+            const openaiTools = convertToOpenAITools(tools);
+            requestParams.tools = openaiTools as OpenAI.Chat.ChatCompletionTool[];
+            requestParams.tool_choice = toolMode === vscode.LanguageModelChatToolMode.Required ? 'required' : 'auto';
+        }
+
+        this.outputChannel.debug(`Chat Completions request: ${JSON.stringify(requestParams, null, 2)}`);
+
+        try {
+            const stream = await this.client.chat.completions.create(requestParams);
+            const partialToolCalls = new Map<number, { id: string; name: string; arguments: string }>();
+
+            for await (const chunk of stream) {
+                if (token.isCancellationRequested) break;
+
+                const choice = chunk.choices[0];
+                if (!choice) continue;
+
+                if (choice.delta.content) {
+                    yield { type: 'text', value: choice.delta.content };
+                }
+
+                for (const tc of choice.delta.tool_calls ?? []) {
+                    if (!partialToolCalls.has(tc.index)) {
+                        partialToolCalls.set(tc.index, { id: tc.id ?? '', name: tc.function?.name ?? '', arguments: '' });
+                    }
+                    const partial = partialToolCalls.get(tc.index)!;
+                    if (tc.id) partial.id = tc.id;
+                    if (tc.function?.name) partial.name = tc.function.name;
+                    if (tc.function?.arguments) partial.arguments += tc.function.arguments;
+                }
+
+                if (choice.finish_reason === 'tool_calls') {
+                    for (const [, tc] of partialToolCalls) {
+                        try {
+                            yield { type: 'toolCall', callId: tc.id, name: tc.name, input: JSON.parse(tc.arguments || '{}') };
+                        } catch {
+                            this.outputChannel.error(`Failed to parse tool call arguments`);
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            this.outputChannel.error(`Chat Completions API request failed: ${error}`);
             throw this.wrapError(error);
         }
     }

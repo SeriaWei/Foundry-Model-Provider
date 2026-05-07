@@ -4,8 +4,12 @@
   "description": "A VS Code extension that provides Microsoft Foundry LLM models as chat model providers for GitHub Copilot Chat",
   "version": "0.1.0",
   "publisher": "foundry",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/foundry-model-provider"
+  },
   "engines": {
-    "vscode": "^1.116.0"
+    "vscode": "^1.118.0"
   },
   "enabledApiProposals": [
     "chatProvider"
@@ -106,6 +110,12 @@
                     "description": "Whether the model supports extended thinking (reasoning models like o1)"
                   }
                 }
+              },
+              "apiType": {
+                "type": "string",
+                "enum": ["responses", "completions", "auto"],
+                "default": "auto",
+                "description": "Which API to use: 'responses' (Responses API), 'completions' (Chat Completions API), 'auto' (try Responses first, fallback to Completions)"
               }
             },
             "required": [
@@ -164,11 +174,15 @@
     "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
     "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
     "compile": "tsc -p ./",
-    "lint": "eslint src --ext ts"
+    "lint": "eslint src --ext ts",
+    "package": "npm run build && vsce package --allow-missing-repository",
+    "publish": "npm run build && vsce publish --allow-missing-repository",
+    "package:pre": "npm run build && vsce package --pre-release --allow-missing-repository"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.118.0",
+    "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.20.0",
     "typescript": "^5.3.0"
   },
