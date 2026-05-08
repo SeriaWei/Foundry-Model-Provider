@@ -224,7 +224,7 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                 } else if (e['type'] === 'response.reasoning_summary_text.delta') {
                     const delta = (e as { delta: string }).delta;
                     if (delta) {
-                        this.outputChannel.info(`[Thinking] ${delta}`);
+                        this.outputChannel.debug(`[Thinking] ${delta}`);
                         yield { type: 'thinking', value: delta };
                     }
                 } else if (e['type'] === 'response.function_call_arguments.delta') {
@@ -380,7 +380,7 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
                 // reasoning models (e.g. DeepSeek-R1) in OpenAI-compatible Chat Completions streams.
                 const reasoningDelta = (choice.delta as Record<string, unknown>)['reasoning_content'];
                 if (typeof reasoningDelta === 'string' && reasoningDelta) {
-                    this.outputChannel.info(`[Thinking] ${reasoningDelta}`);
+                    this.outputChannel.debug(`[Thinking] ${reasoningDelta}`);
                     yield { type: 'thinking', value: reasoningDelta };
                 }
 
