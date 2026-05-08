@@ -34,7 +34,7 @@ export type FoundryApiType = 'responses' | 'completions';
 /**
  * Reasoning effort for reasoning models (o1, o3, o4, etc.)
  */
-export type ReasoningEffort = 'low' | 'medium' | 'high';
+export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
 
 /**
  * Capabilities of a Foundry model

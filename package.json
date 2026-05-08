@@ -120,7 +120,7 @@
               },
               "reasoningEffort": {
                 "type": "string",
-                "enum": ["low", "medium", "high"],
+                "enum": ["low", "medium", "high", "xhigh"],
                 "description": "Reasoning effort for reasoning models (o1, o3, o4, etc.). When set, temperature is not applied."
               }
             },
