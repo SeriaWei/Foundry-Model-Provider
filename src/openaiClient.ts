@@ -111,7 +111,18 @@ export class ResponsesAPIClient extends BaseFoundryClient {
         // Map to Responses API content types:
         //   user/system → input_text / input_image
         //   assistant   → output_text
-        const inputMessages = openaiMessages.map(m => {
+        //   tool result → { type: 'function_call_output', call_id, output }
+        //   assistant tool_calls → { type: 'function_call', call_id, name, arguments }
+        const inputMessages = openaiMessages.flatMap(m => {
+            // Tool result messages must become function_call_output items
+            if (m.role === 'tool') {
+                return [{
+                    type: 'function_call_output' as const,
+                    call_id: m.tool_call_id!,
+                    output: typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+                }];
+            }
+
             const isAssistant = m.role === 'assistant';
             const textType = isAssistant ? 'output_text' : 'input_text';
 
@@ -133,10 +144,27 @@ export class ResponsesAPIClient extends BaseFoundryClient {
             } else {
                 content = String(m.content);
             }
-            return {
+
+            // Assistant messages with tool_calls become function_call items
+            if (isAssistant && m.tool_calls && m.tool_calls.length > 0) {
+                const items: unknown[] = m.tool_calls.map(tc => ({
+                    type: 'function_call' as const,
+                    call_id: tc.id,
+                    name: tc.function.name,
+                    arguments: tc.function.arguments
+                }));
+                // Include any accompanying text content
+                const hasContent = typeof content === 'string' ? content.length > 0 : (content as unknown[]).length > 0;
+                if (hasContent) {
+                    items.unshift({ role: 'assistant' as const, content });
+                }
+                return items;
+            }
+
+            return [{
                 role: m.role as 'user' | 'assistant' | 'system',
                 content
-            };
+            }];
         });
 
         const requestParams: OpenAI.Responses.ResponseCreateParamsStreaming = {
@@ -170,11 +198,7 @@ export class ResponsesAPIClient extends BaseFoundryClient {
             this.outputChannel.debug(`Request payload: ${JSON.stringify(requestParams, null, 2)}`);
             const runner = this.client.responses.stream(requestParams);
 
-            runner.on('response.output_text.delta', (_diff: { delta: string }) => {
-                // handled in the event loop below
-            });
-
-            const partialToolCalls = new Map<string, { name: string; arguments: string }>();
+            const partialToolCalls = new Map<string, { name: string; callId: string; arguments: string }>();
 
             for await (const event of runner) {
                 if (token.isCancellationRequested) {
@@ -183,7 +207,7 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                 }
 
                 const e = event as unknown as Record<string, unknown>;
-                this.outputChannel.debug(`Raw API event: ${JSON.stringify(e)}`);
+                this.outputChannel.info(`Raw API event: ${JSON.stringify(e)}`);
 
                 if (e['type'] === 'response.output_text.delta') {
                     const delta = (e as { delta: string }).delta;
@@ -196,30 +220,57 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                         yield { type: 'thinking', value: delta };
                     }
                 } else if (e['type'] === 'response.function_call_arguments.delta') {
-                    const callId = (e as { call_id: string }).call_id;
+                    const itemId = (e as { item_id: string }).item_id;
                     const delta = (e as { delta: string }).delta;
-                    if (!partialToolCalls.has(callId)) {
-                        partialToolCalls.set(callId, { name: '', arguments: '' });
+                    if (!partialToolCalls.has(itemId)) {
+                        partialToolCalls.set(itemId, { name: '', callId: '', arguments: '' });
                     }
-                    partialToolCalls.get(callId)!.arguments += delta;
+                    partialToolCalls.get(itemId)!.arguments += delta;
                 } else if (e['type'] === 'response.output_item.added') {
                     const item = (e as { item: Record<string, unknown> }).item;
                     if (item?.['type'] === 'function_call') {
+                        const itemId = item['id'] as string;
                         const callId = item['call_id'] as string;
                         const name = item['name'] as string;
-                        if (!partialToolCalls.has(callId)) {
-                            partialToolCalls.set(callId, { name, arguments: '' });
+                        if (!partialToolCalls.has(itemId)) {
+                            partialToolCalls.set(itemId, { name, callId, arguments: '' });
                         } else {
-                            partialToolCalls.get(callId)!.name = name;
+                            const existing = partialToolCalls.get(itemId)!;
+                            existing.name = name;
+                            existing.callId = callId;
+                        }
+                    }
+                } else if (e['type'] === 'response.function_call_arguments.done') {
+                    // Use the authoritative final arguments string from the API
+                    const itemId = (e as { item_id: string }).item_id;
+                    const args = (e as { arguments: string }).arguments;
+                    if (partialToolCalls.has(itemId)) {
+                        partialToolCalls.get(itemId)!.arguments = args;
+                    }
+                } else if (e['type'] === 'response.output_item.done') {
+                    // Emit each tool call as soon as its item is fully done
+                    const item = (e as { item: Record<string, unknown> }).item;
+                    if (item?.['type'] === 'function_call') {
+                        const itemId = item['id'] as string;
+                        const toolCall = partialToolCalls.get(itemId);
+                        if (toolCall) {
+                            try {
+                                const parsedArgs = JSON.parse(toolCall.arguments || '{}');
+                                yield { type: 'toolCall', callId: toolCall.callId, name: toolCall.name, input: parsedArgs };
+                            } catch {
+                                this.outputChannel.error(`Failed to parse tool call arguments for ${toolCall.callId}`);
+                            }
+                            partialToolCalls.delete(itemId);
                         }
                     }
                 } else if (e['type'] === 'response.completed') {
-                    for (const [callId, toolCall] of partialToolCalls) {
+                    // Fallback: emit any tool calls not yet emitted via output_item.done
+                    for (const [, toolCall] of partialToolCalls) {
                         try {
                             const parsedArgs = JSON.parse(toolCall.arguments || '{}');
-                            yield { type: 'toolCall', callId, name: toolCall.name, input: parsedArgs };
+                            yield { type: 'toolCall', callId: toolCall.callId, name: toolCall.name, input: parsedArgs };
                         } catch {
-                            this.outputChannel.error(`Failed to parse tool call arguments for ${callId}`);
+                            this.outputChannel.error(`Failed to parse tool call arguments for ${toolCall.callId}`);
                         }
                     }
                     this.outputChannel.debug('Stream completed');
