@@ -185,9 +185,9 @@
     "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
     "compile": "tsc -p ./",
     "lint": "eslint src --ext ts",
-    "package": "npm run release && vsce package --allow-missing-repository",
+    "pack": "npm run release && vsce package --allow-missing-repository",
     "publish": "npm run release && vsce publish --allow-missing-repository",
-    "package:pre": "npm run release && vsce package --pre-release --allow-missing-repository"
+    "pack:pre": "npm run release && vsce package --pre-release --allow-missing-repository"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

@@ -5,7 +5,7 @@ import {
     FoundryProviderConfig,
     getConfig
 } from './types';
-import { FoundryOpenAIClient, StreamResponsePart } from './openaiClient';
+import { FoundryOpenAIClient, StreamResponsePart } from './foundryApiClient';
 import { estimateTokenCount, estimateMessageTokenCount } from './messageConverter';
 
 type LanguageModelAnyResponsePart = vscode.LanguageModelResponsePart | vscode.LanguageModelThinkingPart;

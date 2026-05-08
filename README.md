@@ -59,11 +59,12 @@ Each model in `foundryModelProvider.models` can have:
             "toolCalling": true,
             "thinking": true
       },
-      "apiType": "completions"
+      "apiType": "completions",
+      "reasoningEffort": "high"
    },
    {
-      "id": "gpt-5.3-codex-1",
-      "name": "GPT-5.3-Codex-1",
+      "id": "gpt-5.3-codex",
+      "name": "GPT-5.3-Codex",
       "family": "Foundry",
       "version": "2026-02-24",
       "maxInputTokens": 128000,
@@ -73,35 +74,8 @@ Each model in `foundryModelProvider.models` can have:
             "toolCalling": true,
             "thinking": true
       },
-      "apiType": "responses"
-   },
-   {
-      "id": "gpt-5.4-mini",
-      "name": "gpt-5.4-mini",
-      "family": "Foundry",
-      "version": "2026-03-17",
-      "maxInputTokens": 128000,
-      "maxOutputTokens": 16384,
-      "capabilities": {
-            "imageInput": true,
-            "toolCalling": true,
-            "thinking": true
-      },
-      "apiType": "responses"
-   },
-   {
-      "id": "gpt-4.1",
-      "name": "GPT-4.1",
-      "family": "Foundry",
-      "version": "2025-04-14",
-      "maxInputTokens": 128000,
-      "maxOutputTokens": 16384,
-      "capabilities": {
-            "imageInput": true,
-            "toolCalling": true,
-            "thinking": false
-      },
-      "apiType": "responses"
+      "apiType": "responses",
+      "reasoningEffort": "high"
    }
 ]
 ```
@@ -135,10 +109,10 @@ Before packaging, ensure you have [@vscode/vsce](https://github.com/microsoft/vs
 npm install
 
 # Create a .vsix package for local distribution
-npm run package
+npm run pack
 
 # Create a pre-release .vsix package
-npm run package:pre
+npm run pack:pre
 
 # Publish to VS Code Marketplace (requires authentication)
 npm run publish
