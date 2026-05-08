@@ -6,7 +6,7 @@ import {
     getConfig
 } from './types';
 import { FoundryOpenAIClient, StreamResponsePart } from './foundryApiClient';
-import { estimateTokenCount, estimateMessageTokenCount } from './messageConverter';
+import { countMessageTokens } from "./provideToken";
 
 type LanguageModelAnyResponsePart = vscode.LanguageModelResponsePart | vscode.LanguageModelThinkingPart;
 
@@ -236,10 +236,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
         text: string | vscode.LanguageModelChatRequestMessage,
         _token: vscode.CancellationToken
     ): Thenable<number> {
-        if (typeof text === 'string') {
-            return Promise.resolve(estimateTokenCount(text));
-        }
-        return Promise.resolve(estimateMessageTokenCount(text));
+        return countMessageTokens(text, { includeReasoningInRequest: true });
     }
 
     /**

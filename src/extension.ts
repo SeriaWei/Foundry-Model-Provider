@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { FoundryLanguageModelChatProvider } from './foundryProvider';
+import { TokenizerManager } from './tokenizer/tokenizerManager';
 import { VENDOR_ID, EXTENSION_ID } from './types';
 
 let provider: FoundryLanguageModelChatProvider | undefined;
@@ -12,6 +13,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Create output channel for logging
     outputChannel = vscode.window.createOutputChannel('Foundry Model Provider', { log: true });
     outputChannel.info('Foundry Model Provider extension activating...');
+
+    // Initialize the tokenizer with the extension path (required before any token counting)
+    TokenizerManager.initialize(context.extensionPath);
+    outputChannel.info('Tokenizer initialized');
 
     // Create the provider
     provider = new FoundryLanguageModelChatProvider(outputChannel, context.secrets);

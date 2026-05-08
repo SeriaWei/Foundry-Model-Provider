@@ -3,7 +3,7 @@
   "displayName": "Foundry Model Provider",
   "description": "A VS Code extension that provides Microsoft Foundry LLM models as chat model providers for GitHub Copilot Chat",
   "version": "0.1.0",
-  "publisher": "foundry",
+  "publisher": "zkeasoft",
   "icon": "./icon.png",
   "repository": {
     "type": "git",
@@ -117,13 +117,21 @@
               },
               "apiType": {
                 "type": "string",
-                "enum": ["responses", "completions"],
+                "enum": [
+                  "responses",
+                  "completions"
+                ],
                 "default": "responses",
                 "description": "Which API to use: 'responses' (Responses API, default) or 'completions' (Chat Completions API)"
               },
               "reasoningEffort": {
                 "type": "string",
-                "enum": ["low", "medium", "high", "xhigh"],
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh"
+                ],
                 "description": "Reasoning effort for reasoning models (o1, o3, o4, etc.). When set, temperature is not applied."
               }
             },
@@ -197,6 +205,7 @@
     "typescript": "^5.3.0"
   },
   "dependencies": {
+    "@microsoft/tiktokenizer": "^1.0.10",
     "openai": "^6.35.0"
   }
 }
