@@ -174,7 +174,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
             );
         }
 
-        this.outputChannel.info(`Generating response with model: ${model.name}`);
+        this.outputChannel.info(`Generating response with model: ${model.name}, api type: ${model._config.apiType ?? 'responses'}`);
 
         try {
             // Stream the response

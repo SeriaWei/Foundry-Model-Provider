@@ -361,6 +361,13 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
                 const choice = chunk.choices[0];
                 if (!choice) { continue; }
 
+                // reasoning_content is not in the standard OpenAI types but is emitted by
+                // reasoning models (e.g. DeepSeek-R1) in OpenAI-compatible Chat Completions streams.
+                const reasoningDelta = (choice.delta as Record<string, unknown>)['reasoning_content'];
+                if (typeof reasoningDelta === 'string' && reasoningDelta) {
+                    yield { type: 'thinking', value: reasoningDelta };
+                }
+
                 if (choice.delta.content) {
                     yield { type: 'text', value: choice.delta.content };
                 }
