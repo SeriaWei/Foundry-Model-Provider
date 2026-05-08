@@ -7,7 +7,7 @@
 
 import OpenAI from "openai";
 
-const endpoint = "https://detect-language.services.ai.azure.com/openai/v1";
+const endpoint = "https://{yourservice}.services.ai.azure.com/openai/v1";
 const deploymentName = "gpt-5.4-mini";
 const apiKey = process.env.FOUNDRY_API_KEY || "<your-api-key>";
 
