@@ -39,7 +39,7 @@ A VS Code extension that provides Microsoft Foundry LLM models as chat model pro
 |---------|-------------|---------|
 | `foundryModelProvider.endpoint` | Microsoft Foundry API endpoint URL | `""` |
 | `foundryModelProvider.models` | List of available models to register | See below |
-| `foundryModelProvider.defaultParameters` | Default parameters for requests | `{ temperature: 0.7, topP: 1.0 }` |
+| `foundryModelProvider.defaultParameters` | Default parameters for requests | `{ temperature: 0.2, topP: 1.0 }` |
 
 ### Model Configuration
 
@@ -132,28 +132,6 @@ Or manually:
 2. Go to Extensions panel (Ctrl+Shift+X)
 3. Click "..." → "Install from VSIX..."
 4. Select the `.vsix` file
-
-#### Publishing to Marketplace
-
-1. Create a [Personal Access Token](https://dev.azure.com/_usersSettings/tokens) in Azure DevOps:
-   - Scope: "Marketplace (publish)"
-   - Organization: All accessible organizations
-2. Authenticate with vsce:
-   ```bash
-   vsce login <publisher-name>
-   ```
-   (Enter your PAT when prompted)
-3. Update `version` in `package.json` (e.g., 0.2.0)
-4. Publish:
-   ```bash
-   npm run publish
-   ```
-
-#### Publisher Account Setup
-
-- Publisher name must match `publisher` field in `package.json` ("foundry")
-- [Create publisher on Visual Studio Marketplace](https://marketplace.visualstudio.com/publishers)
-- Generate [Personal Access Token](https://dev.azure.com/_usersSettings/tokens)
 
 ### Debugging
 

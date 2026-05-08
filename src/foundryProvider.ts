@@ -130,6 +130,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
         const info: FoundryModelInfo = {
             id: model.id,
             name: model.name,
+            detail:'Foundry',
             tooltip: `Foundry Model: ${model.name} (${model.family})`,
             family: model.family,
             version: model.version || '1.0',
