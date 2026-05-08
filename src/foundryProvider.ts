@@ -8,6 +8,8 @@ import {
 import { FoundryOpenAIClient, StreamResponsePart } from './openaiClient';
 import { estimateTokenCount, estimateMessageTokenCount } from './messageConverter';
 
+type LanguageModelAnyResponsePart = vscode.LanguageModelResponsePart | vscode.LanguageModelThinkingPart;
+
 /**
  * Foundry Language Model Chat Provider
  * Implements vscode.LanguageModelChatProvider to provide Foundry models to VS Code
@@ -151,7 +153,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
         model: FoundryModelInfo,
         messages: readonly vscode.LanguageModelChatRequestMessage[],
         options: vscode.ProvideLanguageModelChatResponseOptions,
-        progress: vscode.Progress<vscode.LanguageModelResponsePart>,
+        progress: vscode.Progress<LanguageModelAnyResponsePart>,
         token: vscode.CancellationToken
     ): Promise<void> {
         // Check if client is initialized
@@ -208,15 +210,12 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
     /**
      * Convert stream response part to VS Code response part
      */
-    private convertToResponsePart(part: StreamResponsePart): vscode.LanguageModelResponsePart | null {
+    private convertToResponsePart(part: StreamResponsePart): LanguageModelAnyResponsePart | null {
         switch (part.type) {
             case 'text':
                 return new vscode.LanguageModelTextPart(part.value);
             case 'thinking':
-                // TODO: Use LanguageModelThinkingPart when it becomes stable API
-                // For now, skip thinking content as it's not in the stable response part union
-                //return new vscode.LanguageModelThinkingPart(part.value);
-                return null;
+                return new vscode.LanguageModelThinkingPart(part.value);
             case 'toolCall':
                 return new vscode.LanguageModelToolCallPart(
                     part.callId,
