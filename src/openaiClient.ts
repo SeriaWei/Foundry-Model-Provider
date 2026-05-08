@@ -173,10 +173,17 @@ export class ResponsesAPIClient extends BaseFoundryClient {
             stream: true,
         };
 
-        if (modelOptions?.temperature !== undefined) {
-            requestParams.temperature = modelOptions.temperature as number;
-        } else if (defaultParameters.temperature !== undefined) {
-            requestParams.temperature = defaultParameters.temperature;
+        const reasoningEffort = (modelOptions?.reasoningEffort ?? model.reasoningEffort) as string | undefined;
+        if (reasoningEffort) {
+            // Reasoning models (o1, o3, o4, etc.) use the `reasoning` parameter
+            // and do not support temperature
+            (requestParams as unknown as Record<string, unknown>)['reasoning'] = { effort: reasoningEffort, summary: 'auto' };
+        } else {
+            if (modelOptions?.temperature !== undefined) {
+                requestParams.temperature = modelOptions.temperature as number;
+            } else if (defaultParameters.temperature !== undefined) {
+                requestParams.temperature = defaultParameters.temperature;
+            }
         }
 
         if (modelOptions?.maxTokens !== undefined) {
@@ -217,6 +224,7 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                 } else if (e['type'] === 'response.reasoning_summary_text.delta') {
                     const delta = (e as { delta: string }).delta;
                     if (delta) {
+                        this.outputChannel.info(`[Thinking] ${delta}`);
                         yield { type: 'thinking', value: delta };
                     }
                 } else if (e['type'] === 'response.function_call_arguments.delta') {
@@ -337,6 +345,13 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
             temperature: (modelOptions?.temperature as number) ?? defaultParameters.temperature ?? 0.7,
         };
 
+        const reasoningEffort = (modelOptions?.reasoningEffort ?? model.reasoningEffort) as string | undefined;
+        if (reasoningEffort) {
+            // Reasoning models do not support temperature — remove it and set reasoning_effort
+            delete requestParams.temperature;
+            (requestParams as unknown as Record<string, unknown>)['reasoning_effort'] = reasoningEffort;
+        }
+
         if (modelOptions?.maxTokens) {
             requestParams.max_completion_tokens = modelOptions.maxTokens as number;
         }
@@ -365,6 +380,7 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
                 // reasoning models (e.g. DeepSeek-R1) in OpenAI-compatible Chat Completions streams.
                 const reasoningDelta = (choice.delta as Record<string, unknown>)['reasoning_content'];
                 if (typeof reasoningDelta === 'string' && reasoningDelta) {
+                    this.outputChannel.info(`[Thinking] ${reasoningDelta}`);
                     yield { type: 'thinking', value: reasoningDelta };
                 }
 

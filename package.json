@@ -116,6 +116,11 @@
                 "enum": ["responses", "completions"],
                 "default": "responses",
                 "description": "Which API to use: 'responses' (Responses API, default) or 'completions' (Chat Completions API)"
+              },
+              "reasoningEffort": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": "Reasoning effort for reasoning models (o1, o3, o4, etc.). When set, temperature is not applied."
               }
             },
             "required": [

@@ -20,6 +20,8 @@ export interface FoundryModelConfig {
     capabilities: FoundryModelCapabilities;
     /** Which API to use. Defaults to 'responses' */
     apiType?: FoundryApiType;
+    /** Reasoning effort for reasoning models (o1, o3, o4, etc.) */
+    reasoningEffort?: ReasoningEffort;
 }
 
 /**
@@ -28,6 +30,11 @@ export interface FoundryModelConfig {
  * - 'completions': Use Chat Completions API (openai.chat.completions.create)
  */
 export type FoundryApiType = 'responses' | 'completions';
+
+/**
+ * Reasoning effort for reasoning models (o1, o3, o4, etc.)
+ */
+export type ReasoningEffort = 'low' | 'medium' | 'high';
 
 /**
  * Capabilities of a Foundry model
