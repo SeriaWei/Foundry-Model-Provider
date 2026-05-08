@@ -2,9 +2,7 @@ import * as vscode from 'vscode';
 import OpenAI from 'openai';
 import { 
     FoundryModelConfig, 
-    FoundryDefaultParameters,
-    OpenAIMessage,
-    OpenAITool
+    FoundryDefaultParameters
 } from './types';
 import { convertToOpenAIMessages, convertToOpenAITools } from './messageConverter';
 
@@ -80,14 +78,16 @@ abstract class BaseFoundryClient {
     updateApiKey(apiKey: string): void {
         this.client = new OpenAI({
             baseURL: this.client.baseURL,
-            apiKey: apiKey
+            apiKey: apiKey,
+            defaultHeaders: { 'User-Agent': 'vscode-foundry-model-provider' }
         });
     }
 
     updateEndpoint(endpoint: string, apiKey: string): void {
         this.client = new OpenAI({
             baseURL: endpoint,
-            apiKey: apiKey
+            apiKey: apiKey,
+            defaultHeaders: { 'User-Agent': 'vscode-foundry-model-provider' }
         });
         this.outputChannel.debug(`OpenAI client endpoint updated to: ${endpoint}`);
     }
@@ -169,7 +169,7 @@ export class ResponsesAPIClient extends BaseFoundryClient {
 
         const requestParams: OpenAI.Responses.ResponseCreateParamsStreaming = {
             model: model.id,
-            input: inputMessages as OpenAI.Responses.EasyInputMessage[],
+            input: inputMessages as OpenAI.Responses.ResponseCreateParamsStreaming['input'],
             stream: true,
         };
 
@@ -207,7 +207,7 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                 }
 
                 const e = event as unknown as Record<string, unknown>;
-                this.outputChannel.info(`Raw API event: ${JSON.stringify(e)}`);
+                this.outputChannel.debug(`Raw API event: ${JSON.stringify(e)}`);
 
                 if (e['type'] === 'response.output_text.delta') {
                     const delta = (e as { delta: string }).delta;
@@ -244,24 +244,29 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                     // Use the authoritative final arguments string from the API
                     const itemId = (e as { item_id: string }).item_id;
                     const args = (e as { arguments: string }).arguments;
-                    if (partialToolCalls.has(itemId)) {
+                    if (!partialToolCalls.has(itemId)) {
+                        // done arrived before output_item.added — upsert
+                        partialToolCalls.set(itemId, { name: '', callId: '', arguments: args });
+                    } else {
                         partialToolCalls.get(itemId)!.arguments = args;
                     }
                 } else if (e['type'] === 'response.output_item.done') {
-                    // Emit each tool call as soon as its item is fully done
+                    // Emit each tool call as soon as its item is fully done.
+                    // Use the item's own fields as the authoritative source for call_id, name, and arguments.
                     const item = (e as { item: Record<string, unknown> }).item;
                     if (item?.['type'] === 'function_call') {
                         const itemId = item['id'] as string;
-                        const toolCall = partialToolCalls.get(itemId);
-                        if (toolCall) {
-                            try {
-                                const parsedArgs = JSON.parse(toolCall.arguments || '{}');
-                                yield { type: 'toolCall', callId: toolCall.callId, name: toolCall.name, input: parsedArgs };
-                            } catch {
-                                this.outputChannel.error(`Failed to parse tool call arguments for ${toolCall.callId}`);
-                            }
-                            partialToolCalls.delete(itemId);
+                        const accumulated = partialToolCalls.get(itemId);
+                        const callId = (item['call_id'] as string) || accumulated?.callId || '';
+                        const name = (item['name'] as string) || accumulated?.name || '';
+                        const args = (item['arguments'] as string) ?? accumulated?.arguments ?? '{}';
+                        try {
+                            const parsedArgs = JSON.parse(args || '{}');
+                            yield { type: 'toolCall', callId, name, input: parsedArgs };
+                        } catch {
+                            this.outputChannel.error(`Failed to parse tool call arguments for ${callId}`);
                         }
+                        partialToolCalls.delete(itemId);
                     }
                 } else if (e['type'] === 'response.completed') {
                     // Fallback: emit any tool calls not yet emitted via output_item.done
@@ -273,6 +278,7 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                             this.outputChannel.error(`Failed to parse tool call arguments for ${toolCall.callId}`);
                         }
                     }
+                    partialToolCalls.clear();
                     this.outputChannel.debug('Stream completed');
                 }
             }
@@ -301,16 +307,32 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
 
         const requestParams: OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
             model: model.id,
-            messages: openaiMessages.map(m => ({
-                role: m.role as 'user' | 'assistant' | 'system',
-                content: Array.isArray(m.content)
-                    ? (m.content as Array<Record<string, unknown>>).map(p => {
-                        if (p.type === 'text') { return { type: 'text', text: p.text }; }
-                        if (p.type === 'image_url') { return { type: 'image_url', image_url: p.image_url }; }
-                        return p;
-                    })
-                    : m.content as string
-            })) as OpenAI.Chat.ChatCompletionMessageParam[],
+            messages: openaiMessages.map(m => {
+                // Tool result messages require tool_call_id
+                if (m.role === 'tool') {
+                    return {
+                        role: 'tool' as const,
+                        content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+                        tool_call_id: m.tool_call_id!
+                    };
+                }
+                const mapped: OpenAI.Chat.ChatCompletionMessageParam = {
+                    role: m.role as 'user' | 'assistant' | 'system',
+                    content: Array.isArray(m.content)
+                        ? (m.content as Array<Record<string, unknown>>).map(p => {
+                            if (p.type === 'text') { return { type: 'text' as const, text: p.text as string }; }
+                            if (p.type === 'image_url') { return { type: 'image_url' as const, image_url: p.image_url as OpenAI.Chat.ChatCompletionContentPartImage['image_url'] }; }
+                            return p as unknown as OpenAI.Chat.ChatCompletionContentPart;
+                        })
+                        : m.content as string
+                } as OpenAI.Chat.ChatCompletionMessageParam;
+                // Assistant messages in history may carry tool_calls
+                if (m.role === 'assistant' && m.tool_calls && m.tool_calls.length > 0) {
+                    (mapped as OpenAI.Chat.ChatCompletionAssistantMessageParam).tool_calls =
+                        m.tool_calls as OpenAI.Chat.ChatCompletionMessageToolCall[];
+                }
+                return mapped;
+            }) as OpenAI.Chat.ChatCompletionMessageParam[],
             stream: true,
             temperature: (modelOptions?.temperature as number) ?? defaultParameters.temperature ?? 0.7,
         };
@@ -333,6 +355,8 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
 
             for await (const chunk of stream) {
                 if (token.isCancellationRequested) { break; }
+                
+                this.outputChannel.debug(`Received stream chunk: ${JSON.stringify(chunk)}`);
 
                 const choice = chunk.choices[0];
                 if (!choice) { continue; }
@@ -351,13 +375,16 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
                     if (tc.function?.arguments) { partial.arguments += tc.function.arguments; }
                 }
 
-                if (choice.finish_reason === 'tool_calls') {
-                    for (const [, tc] of partialToolCalls) {
-                        try {
-                            yield { type: 'toolCall', callId: tc.id, name: tc.name, input: JSON.parse(tc.arguments || '{}') };
-                        } catch {
-                            this.outputChannel.error(`Failed to parse tool call arguments`);
+                if (choice.finish_reason === 'tool_calls' || choice.finish_reason === 'stop') {
+                    if (partialToolCalls.size > 0) {
+                        for (const [, tc] of partialToolCalls) {
+                            try {
+                                yield { type: 'toolCall', callId: tc.id, name: tc.name, input: JSON.parse(tc.arguments || '{}') };
+                            } catch {
+                                this.outputChannel.error(`Failed to parse tool call arguments`);
+                            }
                         }
+                        partialToolCalls.clear();
                     }
                 }
             }
