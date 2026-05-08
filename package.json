@@ -4,6 +4,7 @@
   "description": "A VS Code extension that provides Microsoft Foundry LLM models as chat model providers for GitHub Copilot Chat",
   "version": "0.1.0",
   "publisher": "foundry",
+  "icon": "./icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/yourusername/foundry-model-provider"
@@ -51,15 +52,17 @@
             {
               "id": "gpt-4.1",
               "name": "GPT-4.1",
-              "family": "gpt-4.1",
-              "version": "2024-04-01",
+              "family": "Foundry",
+              "version": "2025-04-14",
               "maxInputTokens": 128000,
               "maxOutputTokens": 16384,
               "capabilities": {
                 "imageInput": true,
                 "toolCalling": true,
                 "thinking": false
-              }
+              },
+              "apiType": "responses",
+              "reasoningEffort": "medium"
             }
           ],
           "description": "List of available Foundry models to register",
