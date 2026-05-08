@@ -113,9 +113,9 @@
               },
               "apiType": {
                 "type": "string",
-                "enum": ["responses", "completions", "auto"],
-                "default": "auto",
-                "description": "Which API to use: 'responses' (Responses API), 'completions' (Chat Completions API), 'auto' (try Responses first, fallback to Completions)"
+                "enum": ["responses", "completions"],
+                "default": "responses",
+                "description": "Which API to use: 'responses' (Responses API, default) or 'completions' (Chat Completions API)"
               }
             },
             "required": [
@@ -170,14 +170,15 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run build",
-    "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
+    "vscode:prepublish": "npm run release",
+    "release": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
+    "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
     "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
     "compile": "tsc -p ./",
     "lint": "eslint src --ext ts",
-    "package": "npm run build && vsce package --allow-missing-repository",
-    "publish": "npm run build && vsce publish --allow-missing-repository",
-    "package:pre": "npm run build && vsce package --pre-release --allow-missing-repository"
+    "package": "npm run release && vsce package --allow-missing-repository",
+    "publish": "npm run release && vsce publish --allow-missing-repository",
+    "package:pre": "npm run release && vsce package --pre-release --allow-missing-repository"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

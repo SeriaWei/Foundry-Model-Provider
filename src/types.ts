@@ -18,17 +18,16 @@ export interface FoundryModelConfig {
     maxOutputTokens: number;
     /** Model capabilities */
     capabilities: FoundryModelCapabilities;
-    /** Which API to use. Defaults to 'auto' */
+    /** Which API to use. Defaults to 'responses' */
     apiType?: FoundryApiType;
 }
 
 /**
  * Which API to use for this model
- * - 'responses': Use Responses API (openai.responses.stream)
+ * - 'responses': Use Responses API (openai.responses.stream) — default
  * - 'completions': Use Chat Completions API (openai.chat.completions.create)
- * - 'auto': Try Responses API first, fall back to Chat Completions on 404/405
  */
-export type FoundryApiType = 'responses' | 'completions' | 'auto';
+export type FoundryApiType = 'responses' | 'completions';
 
 /**
  * Capabilities of a Foundry model

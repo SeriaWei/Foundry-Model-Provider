@@ -4,30 +4,24 @@
         {
             "type": "npm",
             "script": "watch",
-            "problemMatcher": "$tsc-watch",
+            "group": "build",
             "isBackground": true,
-            "presentation": {
-                "reveal": "never"
-            },
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
+            "problemMatcher": [
+                "$tsc-watch"
+            ],
+            "label": "npm: watch",
+            "detail": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch"
         },
         {
             "type": "npm",
             "script": "build",
-            "group": "build",
-            "problemMatcher": "$tsc",
-            "presentation": {
-                "reveal": "silent"
-            }
-        },
-        {
-            "type": "npm",
-            "script": "lint",
-            "group": "test",
-            "problemMatcher": "$eslint-stylish"
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "label": "npm: build",
+            "detail": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify"
         }
     ]
 }

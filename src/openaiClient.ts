@@ -28,17 +28,14 @@ export type StreamResponsePart =
     | { type: 'thinking'; value: string }
     | { type: 'toolCall'; callId: string; name: string; input: object };
 
-/**
- * Wrapper around OpenAI client for Foundry API
- */
-export class FoundryOpenAIClient {
-    private client: OpenAI;
-    private outputChannel: vscode.LogOutputChannel;
+// ─── Abstract base ────────────────────────────────────────────────────────────
+
+abstract class BaseFoundryClient {
+    protected client: OpenAI;
+    protected outputChannel: vscode.LogOutputChannel;
 
     constructor(endpoint: string, apiKey: string, outputChannel: vscode.LogOutputChannel) {
         this.outputChannel = outputChannel;
-        
-        // Create OpenAI client with custom base URL for Foundry
         this.client = new OpenAI({
             baseURL: endpoint,
             apiKey: apiKey,
@@ -46,49 +43,92 @@ export class FoundryOpenAIClient {
                 'User-Agent': 'vscode-foundry-model-provider'
             }
         });
-        
         this.outputChannel.debug(`OpenAI client initialized with endpoint: ${endpoint}`);
     }
 
-    /**
-     * Stream a chat completion response using the Responses API
-     */
+    abstract streamChatCompletion(
+        options: ChatCompletionOptions,
+        token: vscode.CancellationToken
+    ): AsyncGenerator<StreamResponsePart>;
+
+    protected wrapError(error: unknown): Error {
+        if (error instanceof OpenAI.APIError) {
+            const message = error.message || 'Unknown API error';
+
+            if (error.status === 401 || error.status === 403) {
+                return vscode.LanguageModelError.NoPermissions(message);
+            }
+            if (error.status === 404) {
+                return vscode.LanguageModelError.NotFound(message);
+            }
+            if (error.status === 429) {
+                return vscode.LanguageModelError.Blocked(`Rate limited: ${message}`);
+            }
+
+            const wrappedError = new Error(message);
+            wrappedError.cause = error;
+            return wrappedError;
+        }
+
+        if (error instanceof Error) {
+            return error;
+        }
+
+        return new Error(String(error));
+    }
+
+    updateApiKey(apiKey: string): void {
+        this.client = new OpenAI({
+            baseURL: this.client.baseURL,
+            apiKey: apiKey
+        });
+    }
+
+    updateEndpoint(endpoint: string, apiKey: string): void {
+        this.client = new OpenAI({
+            baseURL: endpoint,
+            apiKey: apiKey
+        });
+        this.outputChannel.debug(`OpenAI client endpoint updated to: ${endpoint}`);
+    }
+}
+
+// ─── Responses API client ─────────────────────────────────────────────────────
+
+export class ResponsesAPIClient extends BaseFoundryClient {
     async *streamChatCompletion(
         options: ChatCompletionOptions,
         token: vscode.CancellationToken
     ): AsyncGenerator<StreamResponsePart> {
-        const { model, messages, tools, toolMode, modelOptions, defaultParameters } = options;
+        const { model, messages, tools, modelOptions, defaultParameters } = options;
 
-        // Convert messages to OpenAI format
         const openaiMessages = convertToOpenAIMessages(messages);
-        
+
         this.outputChannel.debug(`Sending request to model: ${model.id}`);
         this.outputChannel.debug(`Base URL: ${this.client.baseURL}`);
         this.outputChannel.debug(`Input messages (${openaiMessages.length}): ${JSON.stringify(openaiMessages)}`);
 
-        // Build input: combine all messages into input array for Responses API
-        // Content type depends on role:
-        // - user/system: input_text, input_image
-        // - assistant: output_text
+        // Map to Responses API content types:
+        //   user/system → input_text / input_image
+        //   assistant   → output_text
         const inputMessages = openaiMessages.map(m => {
             const isAssistant = m.role === 'assistant';
             const textType = isAssistant ? 'output_text' : 'input_text';
-            
-            let content: string | Array<{type: string; text?: string; image_url?: unknown}>;
+
+            let content: string | Array<{ type: string; text?: string; image_url?: unknown }>;
             if (typeof m.content === 'string') {
                 content = m.content;
             } else if (Array.isArray(m.content)) {
-                // Convert Chat Completions format to Responses API format
                 content = m.content.map((part: Record<string, unknown>) => {
                     if (part.type === 'text') {
                         return { type: textType, text: part.text as string };
                     } else if (part.type === 'image_url') {
-                        // Chat Completions uses { image_url: { url: "data:mime;base64,..." } }
-                        // Responses API uses { type: 'input_image', image_url: "data:..." } (flat string)
+                        // Chat Completions: { image_url: { url: "data:..." } }
+                        // Responses API:    { type: 'input_image', image_url: "data:..." }
                         const imageUrl = (part.image_url as Record<string, string>)?.url ?? '';
                         return { type: 'input_image', image_url: imageUrl };
                     }
-                    return part as {type: string};
+                    return part as { type: string };
                 });
             } else {
                 content = String(m.content);
@@ -99,14 +139,12 @@ export class FoundryOpenAIClient {
             };
         });
 
-        // Build request parameters for Responses API
         const requestParams: OpenAI.Responses.ResponseCreateParamsStreaming = {
             model: model.id,
             input: inputMessages as OpenAI.Responses.EasyInputMessage[],
             stream: true,
         };
 
-        // Add optional parameters
         if (modelOptions?.temperature !== undefined) {
             requestParams.temperature = modelOptions.temperature as number;
         } else if (defaultParameters.temperature !== undefined) {
@@ -117,7 +155,6 @@ export class FoundryOpenAIClient {
             requestParams.max_output_tokens = modelOptions.maxTokens as number;
         }
 
-        // Add tools if provided
         if (tools && tools.length > 0) {
             const openaiTools = convertToOpenAITools(tools);
             requestParams.tools = openaiTools.map(t => ({
@@ -129,24 +166,15 @@ export class FoundryOpenAIClient {
             }));
         }
 
-        const apiType = model.apiType ?? 'auto';
-        this.outputChannel.debug(`API type: ${apiType}`);
-
-        if (apiType === 'completions') {
-            yield* this.streamChatCompletions(model, inputMessages, tools, toolMode, modelOptions, defaultParameters, token);
-            return;
-        }
-
         try {
             this.outputChannel.debug(`Request payload: ${JSON.stringify(requestParams, null, 2)}`);
             const runner = this.client.responses.stream(requestParams);
 
-            // Track partial tool calls
-            const partialToolCalls = new Map<string, { name: string; arguments: string }>();
-
-            runner.on('response.output_text.delta', (diff: { delta: string }) => {
-                // handled below in event loop
+            runner.on('response.output_text.delta', (_diff: { delta: string }) => {
+                // handled in the event loop below
             });
+
+            const partialToolCalls = new Map<string, { name: string; arguments: string }>();
 
             for await (const event of runner) {
                 if (token.isCancellationRequested) {
@@ -155,8 +183,6 @@ export class FoundryOpenAIClient {
                 }
 
                 const e = event as unknown as Record<string, unknown>;
-                
-                // Log raw API event for debugging
                 this.outputChannel.debug(`Raw API event: ${JSON.stringify(e)}`);
 
                 if (e['type'] === 'response.output_text.delta') {
@@ -165,7 +191,6 @@ export class FoundryOpenAIClient {
                         yield { type: 'text', value: delta };
                     }
                 } else if (e['type'] === 'response.reasoning_summary_text.delta') {
-                    // Reasoning/thinking content
                     const delta = (e as { delta: string }).delta;
                     if (delta) {
                         yield { type: 'thinking', value: delta };
@@ -189,16 +214,10 @@ export class FoundryOpenAIClient {
                         }
                     }
                 } else if (e['type'] === 'response.completed') {
-                    // Emit completed tool calls
                     for (const [callId, toolCall] of partialToolCalls) {
                         try {
                             const parsedArgs = JSON.parse(toolCall.arguments || '{}');
-                            yield {
-                                type: 'toolCall',
-                                callId,
-                                name: toolCall.name,
-                                input: parsedArgs
-                            };
+                            yield { type: 'toolCall', callId, name: toolCall.name, input: parsedArgs };
                         } catch {
                             this.outputChannel.error(`Failed to parse tool call arguments for ${callId}`);
                         }
@@ -207,39 +226,36 @@ export class FoundryOpenAIClient {
                 }
             }
         } catch (error) {
-            // If 'auto' mode and API returned 404/405, fall back to Chat Completions
-            if (apiType === 'auto' && error instanceof OpenAI.APIError && (error.status === 404 || error.status === 405)) {
-                this.outputChannel.warn(`Responses API failed (${error.status}), falling back to Chat Completions API`);
-                yield* this.streamChatCompletions(model, inputMessages, tools, toolMode, modelOptions, defaultParameters, token);
-                return;
-            }
-            this.outputChannel.error(`API request failed: ${error}`);
+            this.outputChannel.error(`Responses API request failed: ${error}`);
             this.outputChannel.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
             throw this.wrapError(error);
         }
     }
+}
 
-    /**
-     * Stream using Chat Completions API
-     */
-    private async *streamChatCompletions(
-        model: FoundryModelConfig,
-        inputMessages: Array<{ role: string; content: unknown }>,
-        tools: readonly vscode.LanguageModelChatTool[] | undefined,
-        toolMode: vscode.LanguageModelChatToolMode | undefined,
-        modelOptions: Record<string, unknown> | undefined,
-        defaultParameters: FoundryDefaultParameters,
+// ─── Chat Completions API client ──────────────────────────────────────────────
+
+export class ChatCompletionsAPIClient extends BaseFoundryClient {
+    async *streamChatCompletion(
+        options: ChatCompletionOptions,
         token: vscode.CancellationToken
     ): AsyncGenerator<StreamResponsePart> {
+        const { model, messages, tools, toolMode, modelOptions, defaultParameters } = options;
+
+        const openaiMessages = convertToOpenAIMessages(messages);
+
+        this.outputChannel.debug(`Sending request to model: ${model.id}`);
+        this.outputChannel.debug(`Base URL: ${this.client.baseURL}`);
+        this.outputChannel.debug(`Input messages (${openaiMessages.length}): ${JSON.stringify(openaiMessages)}`);
+
         const requestParams: OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
             model: model.id,
-            messages: inputMessages.map(m => ({
+            messages: openaiMessages.map(m => ({
                 role: m.role as 'user' | 'assistant' | 'system',
                 content: Array.isArray(m.content)
                     ? (m.content as Array<Record<string, unknown>>).map(p => {
-                        if (p.type === 'input_text') return { type: 'text', text: p.text };
-                        if (p.type === 'output_text') return { type: 'text', text: p.text };
-                        if (p.type === 'input_image') return { type: 'image_url', image_url: { url: p.image_url } };
+                        if (p.type === 'text') { return { type: 'text', text: p.text }; }
+                        if (p.type === 'image_url') { return { type: 'image_url', image_url: p.image_url }; }
                         return p;
                     })
                     : m.content as string
@@ -265,10 +281,10 @@ export class FoundryOpenAIClient {
             const partialToolCalls = new Map<number, { id: string; name: string; arguments: string }>();
 
             for await (const chunk of stream) {
-                if (token.isCancellationRequested) break;
+                if (token.isCancellationRequested) { break; }
 
                 const choice = chunk.choices[0];
-                if (!choice) continue;
+                if (!choice) { continue; }
 
                 if (choice.delta.content) {
                     yield { type: 'text', value: choice.delta.content };
@@ -279,9 +295,9 @@ export class FoundryOpenAIClient {
                         partialToolCalls.set(tc.index, { id: tc.id ?? '', name: tc.function?.name ?? '', arguments: '' });
                     }
                     const partial = partialToolCalls.get(tc.index)!;
-                    if (tc.id) partial.id = tc.id;
-                    if (tc.function?.name) partial.name = tc.function.name;
-                    if (tc.function?.arguments) partial.arguments += tc.function.arguments;
+                    if (tc.id) { partial.id = tc.id; }
+                    if (tc.function?.name) { partial.name = tc.function.name; }
+                    if (tc.function?.arguments) { partial.arguments += tc.function.arguments; }
                 }
 
                 if (choice.finish_reason === 'tool_calls') {
@@ -299,57 +315,49 @@ export class FoundryOpenAIClient {
             throw this.wrapError(error);
         }
     }
+}
 
-    /**
-     * Wrap API errors in VS Code LanguageModelError
-     */
-    private wrapError(error: unknown): Error {
-        if (error instanceof OpenAI.APIError) {
-            const message = error.message || 'Unknown API error';
-            
-            if (error.status === 401 || error.status === 403) {
-                return vscode.LanguageModelError.NoPermissions(message);
-            }
-            
-            if (error.status === 404) {
-                return vscode.LanguageModelError.NotFound(message);
-            }
-            
-            if (error.status === 429) {
-                return vscode.LanguageModelError.Blocked(`Rate limited: ${message}`);
-            }
-            
-            // For other errors, return a generic error
-            const wrappedError = new Error(message);
-            wrappedError.cause = error;
-            return wrappedError;
-        }
-        
-        if (error instanceof Error) {
-            return error;
-        }
-        
-        return new Error(String(error));
+// ─── Public facade ────────────────────────────────────────────────────────────
+
+/**
+ * Routes requests to ResponsesAPIClient or ChatCompletionsAPIClient
+ * based on each model's `apiType` setting.
+ *
+ * - 'responses' (default) → ResponsesAPIClient
+ * - 'completions'         → ChatCompletionsAPIClient
+ */
+export class FoundryOpenAIClient {
+    private responsesClient: ResponsesAPIClient;
+    private completionsClient: ChatCompletionsAPIClient;
+    private outputChannel: vscode.LogOutputChannel;
+
+    constructor(endpoint: string, apiKey: string, outputChannel: vscode.LogOutputChannel) {
+        this.outputChannel = outputChannel;
+        this.responsesClient = new ResponsesAPIClient(endpoint, apiKey, outputChannel);
+        this.completionsClient = new ChatCompletionsAPIClient(endpoint, apiKey, outputChannel);
     }
 
-    /**
-     * Update the API key
-     */
+    async *streamChatCompletion(
+        options: ChatCompletionOptions,
+        token: vscode.CancellationToken
+    ): AsyncGenerator<StreamResponsePart> {
+        const apiType = options.model.apiType ?? 'responses';
+        this.outputChannel.debug(`API type: ${apiType}`);
+
+        if (apiType === 'completions') {
+            yield* this.completionsClient.streamChatCompletion(options, token);
+        } else {
+            yield* this.responsesClient.streamChatCompletion(options, token);
+        }
+    }
+
     updateApiKey(apiKey: string): void {
-        this.client = new OpenAI({
-            baseURL: this.client.baseURL,
-            apiKey: apiKey
-        });
+        this.responsesClient.updateApiKey(apiKey);
+        this.completionsClient.updateApiKey(apiKey);
     }
 
-    /**
-     * Update the endpoint
-     */
     updateEndpoint(endpoint: string, apiKey: string): void {
-        this.client = new OpenAI({
-            baseURL: endpoint,
-            apiKey: apiKey
-        });
-        this.outputChannel.debug(`OpenAI client endpoint updated to: ${endpoint}`);
+        this.responsesClient.updateEndpoint(endpoint, apiKey);
+        this.completionsClient.updateEndpoint(endpoint, apiKey);
     }
 }
