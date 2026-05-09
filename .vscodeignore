@@ -11,3 +11,6 @@ tsconfig.json
 doc.md
 .eslintrc*
 eslint.config.*
+AGENTS.md
+CHANGELOG.md
+test-api.mjs
