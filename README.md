@@ -11,39 +11,95 @@ A VS Code extension that provides Microsoft Foundry LLM models as chat model pro
 - Tool/function calling support
 - Secure API key storage using VS Code's secret storage
 
-## Setup
+## Development Setup
 
-1. Install dependencies:
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18 or higher)
+- [VS Code](https://code.visualstudio.com/) (latest version recommended)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/SeriaWei/Foundry-Model-Provider.git
+   cd Foundry-Model-Provider
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Build the extension:
-   ```bash
-   npm run build
-   ```
+### Building
 
-3. Configure the extension:
-   - Open VS Code Settings
-   - Set `foundryModelProvider.endpoint` to your Foundry API endpoint (e.g., `https://your-service.services.ai.azure.com/openai/v1`)
-   - Run command "Foundry Model Provider: Set API Key" to securely store your API key
+```bash
+# One-time build
+npm run build
 
-4. Configure models (optional):
-   - Customize `foundryModelProvider.models` in settings to add/modify available models
+# Watch mode for development
+npm run watch
+```
 
-## Configuration
+### Debugging
 
-### Settings
+1. Open this folder in VS Code
+2. Press F5 to launch the Extension Development Host
+3. The extension will activate when you open Copilot Chat
+
+### Packaging
+
+```bash
+# Install dependencies (including @vscode/vsce)
+npm install
+
+# Create a .vsix package for local distribution
+npm run pack
+
+# Create a pre-release .vsix package
+npm run pack:pre
+
+# Publish to VS Code Marketplace (requires authentication)
+npm run publish
+```
+
+Output: `.vsix` file will be generated in the project root directory.
+
+### Using the Package
+
+Install the extension locally in VS Code:
+```bash
+code --install-extension foundry-model-provider-0.1.0.vsix
+```
+
+Or manually:
+1. Open VS Code
+2. Go to Extensions panel (Ctrl+Shift+X)
+3. Click "..." → "Install from VSIX..."
+4. Select the `.vsix` file
+
+## Plugin Configuration
+
+After installing the extension, configure it in VS Code Settings:
+
+### Basic Setup
+
+1. Open VS Code Settings
+2. Set `foundryModelProvider.endpoint` to your Foundry API endpoint:
+   - e.g., `https://your-service.services.ai.azure.com/openai/v1`
+3. Run command **"Foundry Model Provider: Set API Key"** to securely store your API key
+
+### Configuration Settings
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `foundryModelProvider.endpoint` | Microsoft Foundry API endpoint URL | `""` |
-| `foundryModelProvider.models` | List of available models to register | See below |
+| `foundryModelProvider.models` | List of available models to register | See default model below |
 | `foundryModelProvider.defaultParameters` | Default parameters for requests | `{ temperature: 0.2, topP: 1.0 }` |
 
 ### Model Configuration
 
-Each model in `foundryModelProvider.models` can have:
+Customize `foundryModelProvider.models` in settings to add or modify available models:
 
 ```json
 "foundryModelProvider.models": [
@@ -109,64 +165,11 @@ Each model in `foundryModelProvider.models` can have:
 ]
 ```
 
-## Commands
+### Available Commands
 
 - **Foundry Model Provider: Set API Key** - Securely store your API key
 - **Foundry Model Provider: Clear API Key** - Remove stored API key
 - **Foundry Model Provider: Refresh Models** - Refresh model configuration
-
-## Development
-
-### Building
-
-```bash
-# One-time build
-npm run build
-
-# Watch mode for development
-npm run watch
-```
-
-### Packaging
-
-Before packaging, ensure you have [@vscode/vsce](https://github.com/microsoft/vscode-vsce) installed (included in devDependencies).
-
-#### Package Commands
-
-```bash
-# Install dependencies (including @vscode/vsce)
-npm install
-
-# Create a .vsix package for local distribution
-npm run pack
-
-# Create a pre-release .vsix package
-npm run pack:pre
-
-# Publish to VS Code Marketplace (requires authentication)
-npm run publish
-```
-
-Output: `.vsix` file will be generated in the project root directory.
-
-#### Using the Package
-
-Install the extension locally in VS Code:
-```bash
-code --install-extension foundry-model-provider-0.1.0.vsix
-```
-
-Or manually:
-1. Open VS Code
-2. Go to Extensions panel (Ctrl+Shift+X)
-3. Click "..." → "Install from VSIX..."
-4. Select the `.vsix` file
-
-### Debugging
-
-1. Open this folder in VS Code
-2. Press F5 to launch the Extension Development Host
-3. The extension will activate when you open Copilot Chat
 
 ## API
 
