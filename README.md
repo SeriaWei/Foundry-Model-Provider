@@ -11,39 +11,29 @@ A VS Code extension that provides Microsoft Foundry LLM models as chat model pro
 - Tool/function calling support
 - Secure API key storage using VS Code's secret storage
 
-## Setup
+## Plugin Configuration
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+After installing the extension, configure it in VS Code Settings:
 
-2. Build the extension:
-   ```bash
-   npm run build
-   ```
+### Basic Setup
 
-3. Configure the extension:
-   - Open VS Code Settings
-   - Set `foundryModelProvider.endpoint` to your Foundry API endpoint (e.g., `https://your-service.services.ai.azure.com/openai/v1`)
-   - Run command "Foundry Model Provider: Set API Key" to securely store your API key
+1. Open VS Code Settings
+2. Search for "Foundry" in the search box
+3. Set `foundryModelProvider.endpoint` to your Foundry API endpoint:
+   - e.g., `https://your-service.services.ai.azure.com/openai/v1`
+4. Run command **"Foundry Model Provider: Set API Key"** to securely store your API key
 
-4. Configure models (optional):
-   - Customize `foundryModelProvider.models` in settings to add/modify available models
-
-## Configuration
-
-### Settings
+### Configuration Settings
 
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `foundryModelProvider.endpoint` | Microsoft Foundry API endpoint URL | `""` |
-| `foundryModelProvider.models` | List of available models to register | See below |
+| `foundryModelProvider.models` | List of available models to register | See default model below |
 | `foundryModelProvider.defaultParameters` | Default parameters for requests | `{ temperature: 0.2, topP: 1.0 }` |
 
 ### Model Configuration
 
-Each model in `foundryModelProvider.models` can have:
+Customize `foundryModelProvider.models` in settings to add or modify available models:
 
 ```json
 "foundryModelProvider.models": [
@@ -109,13 +99,31 @@ Each model in `foundryModelProvider.models` can have:
 ]
 ```
 
-## Commands
+### Available Commands
 
 - **Foundry Model Provider: Set API Key** - Securely store your API key
 - **Foundry Model Provider: Clear API Key** - Remove stored API key
 - **Foundry Model Provider: Refresh Models** - Refresh model configuration
 
-## Development
+## Development Setup
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18 or higher)
+- [VS Code](https://code.visualstudio.com/) (latest version recommended)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/SeriaWei/Foundry-Model-Provider.git
+   cd Foundry-Model-Provider
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
 ### Building
 
@@ -127,11 +135,13 @@ npm run build
 npm run watch
 ```
 
+### Debugging
+
+1. Open this folder in VS Code
+2. Press F5 to launch the Extension Development Host
+3. The extension will activate when you open Copilot Chat
+
 ### Packaging
-
-Before packaging, ensure you have [@vscode/vsce](https://github.com/microsoft/vscode-vsce) installed (included in devDependencies).
-
-#### Package Commands
 
 ```bash
 # Install dependencies (including @vscode/vsce)
@@ -149,7 +159,7 @@ npm run publish
 
 Output: `.vsix` file will be generated in the project root directory.
 
-#### Using the Package
+### Using the Package
 
 Install the extension locally in VS Code:
 ```bash
@@ -161,12 +171,6 @@ Or manually:
 2. Go to Extensions panel (Ctrl+Shift+X)
 3. Click "..." → "Install from VSIX..."
 4. Select the `.vsix` file
-
-### Debugging
-
-1. Open this folder in VS Code
-2. Press F5 to launch the Extension Development Host
-3. The extension will activate when you open Copilot Chat
 
 ## API
 
