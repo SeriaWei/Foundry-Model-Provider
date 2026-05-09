@@ -31,7 +31,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
         this.outputChannel = outputChannel;
         this.secretStorage = secretStorage;
         this.config = getConfig();
-        
+
         this.outputChannel.info('FoundryLanguageModelChatProvider initialized');
     }
 
@@ -40,7 +40,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
      */
     async initialize(): Promise<void> {
         this.apiKey = await this.secretStorage.get('apiKey');
-        
+
         if (this.apiKey && this.config.endpoint) {
             this.client = new FoundryOpenAIClient(
                 this.config.endpoint,
@@ -59,7 +59,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
     async setApiKey(apiKey: string): Promise<void> {
         await this.secretStorage.store('apiKey', apiKey);
         this.apiKey = apiKey;
-        
+
         if (this.config.endpoint) {
             if (this.client) {
                 this.client.updateApiKey(apiKey);
@@ -71,7 +71,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
                 );
             }
         }
-        
+
         this.outputChannel.info('API key updated');
     }
 
@@ -128,12 +128,12 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
      */
     private createModelInfo(model: FoundryModelConfig): FoundryModelInfo {
         const info: FoundryModelInfo = {
-            id: model.id,
+            id: `Foundry:${model.id}`,
             name: model.name,
-            detail:'Foundry',
-            tooltip: `Foundry Model: ${model.name} (${model.family})`,
+            detail: 'Foundry',
+            tooltip: `Foundry: ${model.name}${model.version ? `@${model.version}` : ''}`,
             family: model.family,
-            version: model.version || '1.0',
+            version: model.version || '',
             maxInputTokens: model.maxInputTokens,
             maxOutputTokens: model.maxOutputTokens,
             capabilities: {

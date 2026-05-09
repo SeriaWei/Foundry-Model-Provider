@@ -41,7 +41,7 @@ abstract class BaseFoundryClient {
                 'User-Agent': 'vscode-foundry-model-provider'
             }
         });
-        this.outputChannel.debug(`OpenAI client initialized with endpoint: ${endpoint}`);
+        this.outputChannel.debug(`Foundry client initialized with endpoint: ${endpoint}`);
     }
 
     abstract streamChatCompletion(
@@ -89,7 +89,7 @@ abstract class BaseFoundryClient {
             apiKey: apiKey,
             defaultHeaders: { 'User-Agent': 'vscode-foundry-model-provider' }
         });
-        this.outputChannel.debug(`OpenAI client endpoint updated to: ${endpoint}`);
+        this.outputChannel.debug(`Foundry client endpoint updated to: ${endpoint}`);
     }
 }
 
@@ -104,9 +104,9 @@ export class ResponsesAPIClient extends BaseFoundryClient {
 
         const openaiMessages = convertToOpenAIMessages(messages);
 
-        this.outputChannel.debug(`Sending request to model: ${model.id}`);
-        this.outputChannel.debug(`Base URL: ${this.client.baseURL}`);
-        this.outputChannel.debug(`Input messages (${openaiMessages.length}): ${JSON.stringify(openaiMessages)}`);
+        // this.outputChannel.debug(`Sending request to model: ${model.id}`);
+        // this.outputChannel.debug(`Base URL: ${this.client.baseURL}`);
+        // this.outputChannel.debug(`Input messages (${openaiMessages.length}): ${JSON.stringify(openaiMessages)}`);
 
         // Map to Responses API content types:
         //   user/system → input_text / input_image
@@ -202,19 +202,19 @@ export class ResponsesAPIClient extends BaseFoundryClient {
         }
 
         try {
-            this.outputChannel.debug(`Request payload: ${JSON.stringify(requestParams, null, 2)}`);
+            //this.outputChannel.debug(`Request payload: ${JSON.stringify(requestParams, null, 2)}`);
             const runner = this.client.responses.stream(requestParams);
 
             const partialToolCalls = new Map<string, { name: string; callId: string; arguments: string }>();
 
             for await (const event of runner) {
                 if (token.isCancellationRequested) {
-                    this.outputChannel.debug('Request cancelled by user');
+                    // this.outputChannel.debug('Request cancelled by user');
                     break;
                 }
 
                 const e = event as unknown as Record<string, unknown>;
-                this.outputChannel.debug(`Raw API event: ${JSON.stringify(e)}`);
+                // this.outputChannel.debug(`Raw API event: ${JSON.stringify(e)}`);
 
                 if (e['type'] === 'response.output_text.delta') {
                     const delta = (e as { delta: string }).delta;
@@ -224,7 +224,7 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                 } else if (e['type'] === 'response.reasoning_summary_text.delta') {
                     const delta = (e as { delta: string }).delta;
                     if (delta) {
-                        this.outputChannel.debug(`[Thinking] ${delta}`);
+                        // this.outputChannel.debug(`[Thinking] ${delta}`);
                         yield { type: 'thinking', value: delta };
                     }
                 } else if (e['type'] === 'response.function_call_arguments.delta') {
@@ -287,12 +287,12 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                         }
                     }
                     partialToolCalls.clear();
-                    this.outputChannel.debug('Stream completed');
+                    // this.outputChannel.debug('Stream completed');
                 }
             }
         } catch (error) {
             this.outputChannel.error(`Responses API request failed: ${error}`);
-            this.outputChannel.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
+            // this.outputChannel.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
             throw this.wrapError(error);
         }
     }
@@ -309,9 +309,9 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
 
         const openaiMessages = convertToOpenAIMessages(messages);
 
-        this.outputChannel.debug(`Sending request to model: ${model.id}`);
-        this.outputChannel.debug(`Base URL: ${this.client.baseURL}`);
-        this.outputChannel.debug(`Input messages (${openaiMessages.length}): ${JSON.stringify(openaiMessages)}`);
+        // this.outputChannel.debug(`Sending request to model: ${model.id}`);
+        // this.outputChannel.debug(`Base URL: ${this.client.baseURL}`);
+        // this.outputChannel.debug(`Input messages (${openaiMessages.length}): ${JSON.stringify(openaiMessages)}`);
 
         const requestParams: OpenAI.Chat.ChatCompletionCreateParamsStreaming = {
             model: model.id,
@@ -362,7 +362,7 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
             requestParams.tool_choice = toolMode === vscode.LanguageModelChatToolMode.Required ? 'required' : 'auto';
         }
 
-        this.outputChannel.debug(`Chat Completions request: ${JSON.stringify(requestParams, null, 2)}`);
+        // this.outputChannel.debug(`Chat Completions request: ${JSON.stringify(requestParams, null, 2)}`);
 
         try {
             const stream = await this.client.chat.completions.create(requestParams);
@@ -371,7 +371,7 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
             for await (const chunk of stream) {
                 if (token.isCancellationRequested) { break; }
                 
-                this.outputChannel.debug(`Received stream chunk: ${JSON.stringify(chunk)}`);
+                // this.outputChannel.debug(`Received stream chunk: ${JSON.stringify(chunk)}`);
 
                 const choice = chunk.choices[0];
                 if (!choice) { continue; }
@@ -380,7 +380,7 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
                 // reasoning models (e.g. DeepSeek-R1) in OpenAI-compatible Chat Completions streams.
                 const reasoningDelta = (choice.delta as Record<string, unknown>)['reasoning_content'];
                 if (typeof reasoningDelta === 'string' && reasoningDelta) {
-                    this.outputChannel.debug(`[Thinking] ${reasoningDelta}`);
+                    // this.outputChannel.debug(`[Thinking] ${reasoningDelta}`);
                     yield { type: 'thinking', value: reasoningDelta };
                 }
 
@@ -404,7 +404,7 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
                             try {
                                 yield { type: 'toolCall', callId: tc.id, name: tc.name, input: JSON.parse(tc.arguments || '{}') };
                             } catch {
-                                this.outputChannel.error(`Failed to parse tool call arguments`);
+                                // this.outputChannel.error(`Failed to parse tool call arguments`);
                             }
                         }
                         partialToolCalls.clear();
@@ -443,7 +443,7 @@ export class FoundryOpenAIClient {
         token: vscode.CancellationToken
     ): AsyncGenerator<StreamResponsePart> {
         const apiType = options.model.apiType ?? 'responses';
-        this.outputChannel.debug(`API type: ${apiType}`);
+        // this.outputChannel.debug(`API type: ${apiType}`);
 
         if (apiType === 'completions') {
             yield* this.completionsClient.streamChatCompletion(options, token);
