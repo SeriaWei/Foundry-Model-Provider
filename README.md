@@ -18,9 +18,10 @@ After installing the extension, configure it in VS Code Settings:
 ### Basic Setup
 
 1. Open VS Code Settings
-2. Set `foundryModelProvider.endpoint` to your Foundry API endpoint:
+2. Search for "Foundry" in the search box
+3. Set `foundryModelProvider.endpoint` to your Foundry API endpoint:
    - e.g., `https://your-service.services.ai.azure.com/openai/v1`
-3. Run command **"Foundry Model Provider: Set API Key"** to securely store your API key
+4. Run command **"Foundry Model Provider: Set API Key"** to securely store your API key
 
 ### Configuration Settings
 
