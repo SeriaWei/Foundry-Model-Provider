@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as vscode from 'vscode';
-import { FoundryLanguageModelChatProvider } from './foundryProvider';
-import { FoundryModelInfo } from './types';
+import { FoundryLanguageModelChatProvider } from '../src/foundryProvider';
+import { FoundryModelInfo } from '../src/types';
 
-vi.mock('./foundryApiClient', () => {
+vi.mock('../src/foundryApiClient', () => {
     return {
         FoundryOpenAIClient: class {
             streamChatCompletion = vi.fn().mockReturnValue({
@@ -16,7 +16,7 @@ vi.mock('./foundryApiClient', () => {
     };
 });
 
-vi.mock('./types', () => ({
+vi.mock('../src/types', () => ({
     getConfig: vi.fn().mockReturnValue({
         endpoint: 'https://test.foundry.azure.com',
         models: [
@@ -41,7 +41,7 @@ vi.mock('./types', () => ({
     }),
 }));
 
-vi.mock('./provideToken', () => ({
+vi.mock('../src/provideToken', () => ({
     countMessageTokens: vi.fn().mockResolvedValue(10),
 }));
 

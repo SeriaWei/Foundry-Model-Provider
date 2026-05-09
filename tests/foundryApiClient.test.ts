@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as vscode from 'vscode';
-import { ResponsesAPIClient, ChatCompletionsAPIClient, FoundryOpenAIClient } from './foundryApiClient';
-import { FoundryModelConfig } from './types';
+import { ResponsesAPIClient, ChatCompletionsAPIClient, FoundryOpenAIClient } from '../src/foundryApiClient';
+import { FoundryModelConfig } from '../src/types';
 
 function createMockHeaders(): Headers {
     return {

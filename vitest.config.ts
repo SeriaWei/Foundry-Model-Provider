@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -15,7 +15,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      vscode: path.resolve(__dirname, './src/__mocks__/vscode.ts'),
+      vscode: path.resolve(__dirname, './tests/__mocks__/vscode.ts'),
     },
   },
 });

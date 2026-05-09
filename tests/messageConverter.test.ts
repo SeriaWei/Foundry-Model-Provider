@@ -5,7 +5,7 @@ import {
     convertToOpenAITools,
     estimateTokenCount,
     estimateMessageTokenCount,
-} from './messageConverter';
+} from '../src/messageConverter';
 
 function createTextPart(value: string): vscode.LanguageModelTextPart {
     return {
