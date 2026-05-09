@@ -11,73 +11,6 @@ A VS Code extension that provides Microsoft Foundry LLM models as chat model pro
 - Tool/function calling support
 - Secure API key storage using VS Code's secret storage
 
-## Development Setup
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (v18 or higher)
-- [VS Code](https://code.visualstudio.com/) (latest version recommended)
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/SeriaWei/Foundry-Model-Provider.git
-   cd Foundry-Model-Provider
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Building
-
-```bash
-# One-time build
-npm run build
-
-# Watch mode for development
-npm run watch
-```
-
-### Debugging
-
-1. Open this folder in VS Code
-2. Press F5 to launch the Extension Development Host
-3. The extension will activate when you open Copilot Chat
-
-### Packaging
-
-```bash
-# Install dependencies (including @vscode/vsce)
-npm install
-
-# Create a .vsix package for local distribution
-npm run pack
-
-# Create a pre-release .vsix package
-npm run pack:pre
-
-# Publish to VS Code Marketplace (requires authentication)
-npm run publish
-```
-
-Output: `.vsix` file will be generated in the project root directory.
-
-### Using the Package
-
-Install the extension locally in VS Code:
-```bash
-code --install-extension foundry-model-provider-0.1.0.vsix
-```
-
-Or manually:
-1. Open VS Code
-2. Go to Extensions panel (Ctrl+Shift+X)
-3. Click "..." → "Install from VSIX..."
-4. Select the `.vsix` file
-
 ## Plugin Configuration
 
 After installing the extension, configure it in VS Code Settings:
@@ -170,6 +103,73 @@ Customize `foundryModelProvider.models` in settings to add or modify available m
 - **Foundry Model Provider: Set API Key** - Securely store your API key
 - **Foundry Model Provider: Clear API Key** - Remove stored API key
 - **Foundry Model Provider: Refresh Models** - Refresh model configuration
+
+## Development Setup
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (v18 or higher)
+- [VS Code](https://code.visualstudio.com/) (latest version recommended)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/SeriaWei/Foundry-Model-Provider.git
+   cd Foundry-Model-Provider
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+### Building
+
+```bash
+# One-time build
+npm run build
+
+# Watch mode for development
+npm run watch
+```
+
+### Debugging
+
+1. Open this folder in VS Code
+2. Press F5 to launch the Extension Development Host
+3. The extension will activate when you open Copilot Chat
+
+### Packaging
+
+```bash
+# Install dependencies (including @vscode/vsce)
+npm install
+
+# Create a .vsix package for local distribution
+npm run pack
+
+# Create a pre-release .vsix package
+npm run pack:pre
+
+# Publish to VS Code Marketplace (requires authentication)
+npm run publish
+```
+
+Output: `.vsix` file will be generated in the project root directory.
+
+### Using the Package
+
+Install the extension locally in VS Code:
+```bash
+code --install-extension foundry-model-provider-0.1.0.vsix
+```
+
+Or manually:
+1. Open VS Code
+2. Go to Extensions panel (Ctrl+Shift+X)
+3. Click "..." → "Install from VSIX..."
+4. Select the `.vsix` file
 
 ## API
 
