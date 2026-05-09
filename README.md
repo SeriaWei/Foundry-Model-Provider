@@ -52,8 +52,8 @@ Each model in `foundryModelProvider.models` can have:
       "name": "DeepSeek-V4-Flash",
       "family": "Foundry",
       "version": "2026-04-23",
-      "maxInputTokens": 128000,
-      "maxOutputTokens": 16384,
+      "maxInputTokens": 1000000,
+      "maxOutputTokens": 128000,
       "capabilities": {
             "imageInput": true,
             "toolCalling": true,
@@ -63,12 +63,12 @@ Each model in `foundryModelProvider.models` can have:
       "reasoningEffort": "high"
    },
    {
-      "id": "gpt-5.3-codex",
-      "name": "GPT-5.3-Codex",
+      "id": "gpt-5.3-codex-1",
+      "name": "GPT-5.3-Codex-1",
       "family": "Foundry",
       "version": "2026-02-24",
-      "maxInputTokens": 128000,
-      "maxOutputTokens": 16384,
+      "maxInputTokens": 400000,
+      "maxOutputTokens": 128000,
       "capabilities": {
             "imageInput": true,
             "toolCalling": true,
@@ -76,6 +76,35 @@ Each model in `foundryModelProvider.models` can have:
       },
       "apiType": "responses",
       "reasoningEffort": "high"
+   },
+   {
+      "id": "gpt-5.4-mini",
+      "name": "GPT-5.4-mini",
+      "family": "Foundry",
+      "version": "2026-03-17",
+      "maxInputTokens": 400000,
+      "maxOutputTokens": 128000,
+      "capabilities": {
+            "imageInput": true,
+            "toolCalling": true,
+            "thinking": true
+      },
+      "apiType": "responses",
+      "reasoningEffort": "xhigh"
+   },
+   {
+      "id": "gpt-4.1",
+      "name": "GPT-4.1",
+      "family": "Foundry",
+      "version": "2025-04-14",
+      "maxInputTokens": 1000000,
+      "maxOutputTokens": 32768,
+      "capabilities": {
+            "imageInput": true,
+            "toolCalling": true,
+            "thinking": false
+      },
+      "apiType": "responses"
    }
 ]
 ```
