@@ -71,6 +71,7 @@ export interface FoundryProviderConfig {
  */
 export interface FoundryModelInfo extends vscode.LanguageModelChatInformation {
     /** Internal config reference */
+    isUserSelectable: boolean;
     _config: FoundryModelConfig;
 }
 

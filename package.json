@@ -2,7 +2,7 @@
   "name": "foundry-model-provider",
   "displayName": "Foundry Model Provider",
   "description": "A VS Code extension that provides Microsoft Foundry LLM models as chat model providers for GitHub Copilot Chat",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "zkeasoft",
   "icon": "./assets/icon.png",
   "repository": {
@@ -13,8 +13,7 @@
     "vscode": "^1.118.0"
   },
   "enabledApiProposals": [
-    "chatProvider",
-    "languageModelThinkingPart"
+    "chatProvider"
   ],
   "categories": [
     "AI",
@@ -35,7 +34,7 @@
     "languageModelChatProviders": [
       {
         "vendor": "foundry",
-        "displayName": "Foundry Model Provider"
+        "displayName": "Foundry"
       }
     ],
     "configuration": {
@@ -201,7 +200,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.40",
-    "@types/vscode": "^1.118.0",
+    "@types/vscode": "^1.120.0",
     "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.20.0",
     "typescript": "^5.3.0",

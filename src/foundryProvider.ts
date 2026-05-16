@@ -140,6 +140,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
                 imageInput: model.capabilities.imageInput,
                 toolCalling: model.capabilities.toolCalling
             },
+            isUserSelectable: true,
             _config: model
         };
         this.outputChannel.debug(`Created model info: ${JSON.stringify({ id: info.id, name: info.name, family: info.family })}`);
