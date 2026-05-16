@@ -22,6 +22,8 @@ export interface FoundryModelConfig {
     apiType?: FoundryApiType;
     /** Reasoning effort for reasoning models (o1, o3, o4, etc.) */
     reasoningEffort?: ReasoningEffort;
+    /** Whether the model is selectable by the user in the model picker. Defaults to true */
+    isUserSelectable?: boolean;
 }
 
 /**

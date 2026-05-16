@@ -132,6 +132,11 @@
                   "xhigh"
                 ],
                 "description": "Reasoning effort for reasoning models (o1, o3, o4, etc.). When set, temperature is not applied."
+              },
+              "isUserSelectable": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether the model is selectable by the user in the model picker. Set to false to hide the model from users while keeping it registered."
               }
             },
             "required": [
