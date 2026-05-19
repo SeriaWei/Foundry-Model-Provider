@@ -24,7 +24,8 @@ export interface ChatCompletionOptions {
 export type StreamResponsePart = 
     | { type: 'text'; value: string }
     | { type: 'thinking'; value: string }
-    | { type: 'toolCall'; callId: string; name: string; input: object };
+    | { type: 'toolCall'; callId: string; name: string; input: object }
+    | { type: 'usage'; value: import('./types').TokenUsage };
 
 // ─── Abstract base ────────────────────────────────────────────────────────────
 
@@ -277,6 +278,19 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                         partialToolCalls.delete(itemId);
                     }
                 } else if (e['type'] === 'response.completed') {
+                    // Extract token usage from the completed response
+                    const response = e['response'] as Record<string, unknown> | undefined;
+                    if (response?.['usage']) {
+                        const usage = response['usage'] as { input_tokens: number; output_tokens: number; total_tokens: number };
+                        yield {
+                            type: 'usage',
+                            value: {
+                                prompt_tokens: usage.input_tokens ?? 0,
+                                completion_tokens: usage.output_tokens ?? 0,
+                                total_tokens: usage.total_tokens ?? 0
+                            }
+                        };
+                    }
                     // Fallback: emit any tool calls not yet emitted via output_item.done
                     for (const [, toolCall] of partialToolCalls) {
                         try {
@@ -342,6 +356,7 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
                 return mapped;
             }) as OpenAI.Chat.ChatCompletionMessageParam[],
             stream: true,
+            stream_options: { include_usage: true },
             temperature: (modelOptions?.temperature as number) ?? defaultParameters.temperature ?? 0.7,
         };
 
@@ -372,6 +387,20 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
                 if (token.isCancellationRequested) { break; }
                 
                 // this.outputChannel.debug(`Received stream chunk: ${JSON.stringify(chunk)}`);
+
+                // Extract usage from the final chunk (emitted when stream_options.include_usage = true)
+                const chunkUsage = (chunk as unknown as Record<string, unknown>)['usage'] as
+                    { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined;
+                if (chunkUsage) {
+                    yield {
+                        type: 'usage',
+                        value: {
+                            prompt_tokens: chunkUsage.prompt_tokens ?? 0,
+                            completion_tokens: chunkUsage.completion_tokens ?? 0,
+                            total_tokens: chunkUsage.total_tokens ?? 0
+                        }
+                    };
+                }
 
                 const choice = chunk.choices[0];
                 if (!choice) { continue; }
@@ -411,6 +440,9 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
                     }
                 }
             }
+
+            // After the stream completes, check if usage was available on the last chunk
+            // (some OpenAI-compatible APIs include usage in the final streaming chunk)
         } catch (error) {
             this.outputChannel.error(`Chat Completions API request failed: ${error}`);
             throw this.wrapError(error);

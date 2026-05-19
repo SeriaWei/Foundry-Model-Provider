@@ -3,7 +3,9 @@ import {
     FoundryModelConfig,
     FoundryModelInfo,
     FoundryProviderConfig,
-    getConfig
+    getConfig,
+    CustomDataPartMimeTypes,
+    TokenUsage
 } from './types';
 import { FoundryOpenAIClient, StreamResponsePart } from './foundryApiClient';
 import { countMessageTokens } from "./provideToken";
@@ -191,15 +193,27 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
                 defaultParameters: this.config.defaultParameters
             }, token);
 
+            let usage: TokenUsage | null = null;
+
             for await (const part of stream) {
                 if (token.isCancellationRequested) {
                     break;
+                }
+
+                if (part.type === 'usage') {
+                    usage = part.value;
+                    continue;
                 }
 
                 const responsePart = this.convertToResponsePart(part);
                 if (responsePart) {
                     progress.report(responsePart);
                 }
+            }
+
+            // Report token usage at the end so VS Code can display it in the Context Window widget
+            if (usage) {
+                this.reportUsage(progress, model.name, usage);
             }
 
             this.outputChannel.info('Response generation complete');
@@ -226,6 +240,24 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
                 );
             default:
                 return null;
+        }
+    }
+
+    /**
+     * Report token usage as a LanguageModelDataPart so VS Code
+     * can display usage stats in the Context Window widget.
+     */
+    private reportUsage(
+        progress: vscode.Progress<LanguageModelAnyResponsePart>,
+        modelName: string,
+        usage: TokenUsage
+    ): void {
+        this.outputChannel.info('usage.report', { modelId: modelName, usage });
+        try {
+            const bytes = new TextEncoder().encode(JSON.stringify(usage));
+            progress.report(new vscode.LanguageModelDataPart(bytes, CustomDataPartMimeTypes.Usage));
+        } catch (e) {
+            this.outputChannel.error(`usage.report.error: ${e instanceof Error ? e.message : String(e)}`);
         }
     }
 

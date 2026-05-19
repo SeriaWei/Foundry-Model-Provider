@@ -123,6 +123,30 @@ export interface OpenAIStreamEvent {
 }
 
 /**
+ * Custom data part MIME types for vscode.LanguageModelDataPart
+ */
+export namespace CustomDataPartMimeTypes {
+    export const Usage = "usage";
+}
+
+/**
+ * Standard OpenAI token usage details.
+ */
+export interface TokenUsageDetails {
+    cached_tokens?: number;
+}
+
+/**
+ * Standard OpenAI token usage structure.
+ */
+export interface TokenUsage {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    prompt_tokens_details?: TokenUsageDetails;
+}
+
+/**
  * Constants for the extension
  */
 export const VENDOR_ID = 'foundry';
