@@ -36,7 +36,7 @@ export type FoundryApiType = 'responses' | 'completions';
 /**
  * Reasoning effort for reasoning models (o1, o3, o4, etc.)
  */
-export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+export type ReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 /**
  * Capabilities of a Foundry model
@@ -74,6 +74,20 @@ export interface FoundryProviderConfig {
 export interface FoundryModelInfo extends vscode.LanguageModelChatInformation {
     /** Internal config reference */
     isUserSelectable: boolean;
+    /** Optional model picker schema for runtime model configuration */
+    configurationSchema?: {
+        properties: {
+            reasoningEffort: {
+                type: 'string';
+                title: string;
+                enum: readonly ReasoningEffort[];
+                enumItemLabels: readonly string[];
+                enumDescriptions: readonly string[];
+                default: ReasoningEffort;
+                group: string;
+            }
+        };
+    };
     _config: FoundryModelConfig;
 }
 

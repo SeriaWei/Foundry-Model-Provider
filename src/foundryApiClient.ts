@@ -5,6 +5,7 @@ import {
     FoundryDefaultParameters
 } from './types';
 import { convertToOpenAIMessages, convertToOpenAITools } from './messageConverter';
+import { RequestOptionsLike, resolveReasoningEffort } from './reasoningEffort';
 
 /**
  * Options for chat completion request
@@ -15,7 +16,19 @@ export interface ChatCompletionOptions {
     tools?: readonly vscode.LanguageModelChatTool[];
     toolMode?: vscode.LanguageModelChatToolMode;
     modelOptions?: Record<string, unknown>;
+    requestOptions?: RequestOptionsLike;
     defaultParameters: FoundryDefaultParameters;
+}
+
+function hasReasoningEffortCandidate(
+    requestOptions: RequestOptionsLike | undefined,
+    model: FoundryModelConfig
+): boolean {
+    return requestOptions?.modelConfiguration?.reasoningEffort !== undefined
+        || requestOptions?.configuration?.reasoningEffort !== undefined
+        || requestOptions?.modelOptions?.reasoningEffort !== undefined
+        || model.reasoningEffort !== undefined
+        || model.capabilities.thinking;
 }
 
 /**
@@ -102,6 +115,7 @@ export class ResponsesAPIClient extends BaseFoundryClient {
         token: vscode.CancellationToken
     ): AsyncGenerator<StreamResponsePart> {
         const { model, messages, tools, modelOptions, defaultParameters } = options;
+        const requestOptions = options.requestOptions ?? { modelOptions };
 
         const openaiMessages = convertToOpenAIMessages(messages);
 
@@ -174,11 +188,21 @@ export class ResponsesAPIClient extends BaseFoundryClient {
             stream: true,
         };
 
-        const reasoningEffort = (modelOptions?.reasoningEffort ?? model.reasoningEffort) as string | undefined;
-        if (reasoningEffort) {
+        if (hasReasoningEffortCandidate(requestOptions, model)) {
+            const reasoningEffort = resolveReasoningEffort(requestOptions, model.reasoningEffort);
             // Reasoning models (o1, o3, o4, etc.) use the `reasoning` parameter
             // and do not support temperature
-            (requestParams as unknown as Record<string, unknown>)['reasoning'] = { effort: reasoningEffort, summary: 'auto' };
+            const requestParamsRecord = requestParams as unknown as Record<string, unknown>;
+            const currentReasoning = requestParamsRecord['reasoning'];
+            const reasoningPayload = currentReasoning && typeof currentReasoning === 'object' && !Array.isArray(currentReasoning)
+                ? (currentReasoning as Record<string, unknown>)
+                : {};
+
+            requestParamsRecord['reasoning'] = {
+                ...reasoningPayload,
+                effort: reasoningEffort,
+                summary: reasoningPayload['summary'] ?? 'auto'
+            };
         } else {
             if (modelOptions?.temperature !== undefined) {
                 requestParams.temperature = modelOptions.temperature as number;
@@ -320,6 +344,7 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
         token: vscode.CancellationToken
     ): AsyncGenerator<StreamResponsePart> {
         const { model, messages, tools, toolMode, modelOptions, defaultParameters } = options;
+        const requestOptions = options.requestOptions ?? { modelOptions };
 
         const openaiMessages = convertToOpenAIMessages(messages);
 
@@ -360,8 +385,8 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
             temperature: (modelOptions?.temperature as number) ?? defaultParameters.temperature ?? 0.7,
         };
 
-        const reasoningEffort = (modelOptions?.reasoningEffort ?? model.reasoningEffort) as string | undefined;
-        if (reasoningEffort) {
+        if (hasReasoningEffortCandidate(requestOptions, model)) {
+            const reasoningEffort = resolveReasoningEffort(requestOptions, model.reasoningEffort);
             // Reasoning models do not support temperature — remove it and set reasoning_effort
             delete requestParams.temperature;
             (requestParams as unknown as Record<string, unknown>)['reasoning_effort'] = reasoningEffort;

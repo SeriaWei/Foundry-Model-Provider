@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import * as vscode from 'vscode';
 import { FoundryLanguageModelChatProvider } from '../src/foundryProvider';
 import { FoundryModelInfo } from '../src/types';
+import { getConfig } from '../src/types';
 
 vi.mock('../src/foundryApiClient', () => {
     return {
@@ -77,8 +78,25 @@ function createMockSecretStorage(): vscode.SecretStorage {
             storage.delete(key);
             return Promise.resolve();
         }),
+        keys: vi.fn().mockImplementation(() => {
+            return Promise.resolve(Array.from(storage.keys()));
+        }),
         onDidChange: vi.fn(),
     };
+}
+
+const PREPARE_MODEL_OPTIONS: vscode.PrepareLanguageModelChatModelOptions = {
+    silent: true,
+};
+
+function expectModelInfoArray(
+    result: vscode.ProviderResult<FoundryModelInfo[]>
+): FoundryModelInfo[] {
+    if (!Array.isArray(result)) {
+        throw new Error('Expected synchronous model info array in test');
+    }
+
+    return result;
 }
 
 describe('FoundryLanguageModelChatProvider', () => {
@@ -156,14 +174,10 @@ describe('FoundryLanguageModelChatProvider', () => {
 
     describe('provideLanguageModelChatInformation', () => {
         it('should return model info array', () => {
-            const mockOptions = {
-                justification: 'test',
-            } as vscode.PrepareLanguageModelChatModelOptions;
-
-            const result = provider.provideLanguageModelChatInformation(mockOptions, {
+            const result = expectModelInfoArray(provider.provideLanguageModelChatInformation(PREPARE_MODEL_OPTIONS, {
                 isCancellationRequested: false,
                 onCancellationRequested: vi.fn(),
-            });
+            }));
 
             expect(result).toBeInstanceOf(Array);
             expect(result.length).toBeGreaterThan(0);
@@ -177,14 +191,10 @@ describe('FoundryLanguageModelChatProvider', () => {
         });
 
         it('should include model capabilities', () => {
-            const mockOptions = {
-                justification: 'test',
-            } as vscode.PrepareLanguageModelChatModelOptions;
-
-            const result = provider.provideLanguageModelChatInformation(mockOptions, {
+            const result = expectModelInfoArray(provider.provideLanguageModelChatInformation(PREPARE_MODEL_OPTIONS, {
                 isCancellationRequested: false,
                 onCancellationRequested: vi.fn(),
-            });
+            }));
 
             const modelInfo = result[0] as FoundryModelInfo;
             expect(modelInfo.capabilities).toBeDefined();
@@ -193,18 +203,86 @@ describe('FoundryLanguageModelChatProvider', () => {
         });
 
         it('should return internal config reference', () => {
-            const mockOptions = {
-                justification: 'test',
-            } as vscode.PrepareLanguageModelChatModelOptions;
-
-            const result = provider.provideLanguageModelChatInformation(mockOptions, {
+            const result = expectModelInfoArray(provider.provideLanguageModelChatInformation(PREPARE_MODEL_OPTIONS, {
                 isCancellationRequested: false,
                 onCancellationRequested: vi.fn(),
-            });
+            }));
 
             const modelInfo = result[0] as FoundryModelInfo;
             expect(modelInfo._config).toBeDefined();
             expect(modelInfo._config.id).toBe('gpt-4');
+        });
+
+        it('should attach reasoning effort dropdown schema when default is valid', () => {
+            vi.mocked(getConfig).mockReturnValueOnce({
+                endpoint: 'https://test.foundry.azure.com',
+                models: [{
+                    id: 'o4-mini',
+                    name: 'o4-mini',
+                    family: 'o4',
+                    maxInputTokens: 128000,
+                    maxOutputTokens: 16384,
+                    capabilities: {
+                        imageInput: false,
+                        toolCalling: true,
+                        thinking: true,
+                    },
+                    apiType: 'responses',
+                    reasoningEffort: 'high',
+                }],
+                defaultParameters: {
+                    temperature: 0.7,
+                    topP: 1,
+                },
+            });
+
+            const localProvider = new FoundryLanguageModelChatProvider(outputChannel, secretStorage);
+            const result = expectModelInfoArray(localProvider.provideLanguageModelChatInformation(PREPARE_MODEL_OPTIONS, {
+                isCancellationRequested: false,
+                onCancellationRequested: vi.fn(),
+            }));
+
+            const schema = (result[0] as FoundryModelInfo).configurationSchema;
+            expect(schema).toBeDefined();
+            expect(schema?.properties.reasoningEffort.default).toBe('high');
+            expect(schema?.properties.reasoningEffort.enum).toContain('minimal');
+            expect(schema?.properties.reasoningEffort.enum).toContain('max');
+
+            localProvider.dispose();
+        });
+
+        it('should not attach reasoning effort dropdown schema when default is invalid', () => {
+            vi.mocked(getConfig).mockReturnValueOnce({
+                endpoint: 'https://test.foundry.azure.com',
+                models: [{
+                    id: 'o4-mini',
+                    name: 'o4-mini',
+                    family: 'o4',
+                    maxInputTokens: 128000,
+                    maxOutputTokens: 16384,
+                    capabilities: {
+                        imageInput: false,
+                        toolCalling: true,
+                        thinking: true,
+                    },
+                    apiType: 'responses',
+                    reasoningEffort: 'unsupported-value' as unknown as 'medium',
+                }],
+                defaultParameters: {
+                    temperature: 0.7,
+                    topP: 1,
+                },
+            });
+
+            const localProvider = new FoundryLanguageModelChatProvider(outputChannel, secretStorage);
+            const result = expectModelInfoArray(localProvider.provideLanguageModelChatInformation(PREPARE_MODEL_OPTIONS, {
+                isCancellationRequested: false,
+                onCancellationRequested: vi.fn(),
+            }));
+
+            expect((result[0] as FoundryModelInfo).configurationSchema).toBeUndefined();
+
+            localProvider.dispose();
         });
     });
 
@@ -284,7 +362,10 @@ describe('FoundryLanguageModelChatProvider', () => {
                 provider.provideLanguageModelChatResponse(
                     modelInfo,
                     [],
-                    { tools: [] } as vscode.ProvideLanguageModelChatResponseOptions,
+                    {
+                        tools: [],
+                        toolMode: vscode.LanguageModelChatToolMode.Auto,
+                    } as vscode.ProvideLanguageModelChatResponseOptions,
                     mockProgress,
                     { isCancellationRequested: false, onCancellationRequested: vi.fn() }
                 )

@@ -9,6 +9,7 @@ import {
 } from './types';
 import { FoundryOpenAIClient, StreamResponsePart } from './foundryApiClient';
 import { countMessageTokens } from "./provideToken";
+import { createReasoningEffortSchema, isReasoningEffortValue } from './reasoningEffort';
 
 type LanguageModelAnyResponsePart = vscode.LanguageModelResponsePart | vscode.LanguageModelThinkingPart;
 
@@ -145,6 +146,11 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
             isUserSelectable: model.isUserSelectable ?? true,
             _config: model
         };
+
+        if (isReasoningEffortValue(model.reasoningEffort)) {
+            info.configurationSchema = createReasoningEffortSchema(model.reasoningEffort);
+        }
+
         this.outputChannel.debug(`Created model info: ${JSON.stringify({ id: info.id, name: info.name, family: info.family })}`);
         return info;
     }
@@ -190,6 +196,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
                 tools: options.tools,
                 toolMode: options.toolMode,
                 modelOptions: options.modelOptions as Record<string, unknown> | undefined,
+                requestOptions: options,
                 defaultParameters: this.config.defaultParameters
             }, token);
 

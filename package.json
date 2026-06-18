@@ -126,12 +126,14 @@
               "reasoningEffort": {
                 "type": "string",
                 "enum": [
+                  "minimal",
                   "low",
                   "medium",
                   "high",
-                  "xhigh"
+                  "xhigh",
+                  "max"
                 ],
-                "description": "Reasoning effort for reasoning models (o1, o3, o4, etc.). When set, temperature is not applied."
+                "description": "Default reasoning effort for reasoning models (o1, o3, o4, etc.). Also controls which options appear in the model picker dropdown."
               },
               "isUserSelectable": {
                 "type": "boolean",
@@ -205,7 +207,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.40",
-    "@types/vscode": "^1.120.0",
+    "@types/vscode": "^1.125.0",
     "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.20.0",
     "typescript": "^5.3.0",
