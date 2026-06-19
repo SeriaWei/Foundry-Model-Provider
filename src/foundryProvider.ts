@@ -9,7 +9,7 @@ import {
 } from './types';
 import { FoundryOpenAIClient, StreamResponsePart } from './foundryApiClient';
 import { countMessageTokens } from "./provideToken";
-import { createReasoningEffortSchema, isReasoningEffortValue } from './reasoningEffort';
+import { createReasoningEffortSchema, isReasoningEffortValue, RequestOptionsLike } from './reasoningEffort';
 
 type LanguageModelAnyResponsePart = vscode.LanguageModelResponsePart | vscode.LanguageModelThinkingPart;
 
@@ -148,7 +148,11 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
         };
 
         if (isReasoningEffortValue(model.reasoningEffort)) {
-            info.configurationSchema = createReasoningEffortSchema(model.reasoningEffort);
+            info.configurationSchema = {
+                properties: {
+                    reasoningEffort: createReasoningEffortSchema(model.reasoningEffort)
+                }
+            };
         }
 
         this.outputChannel.debug(`Created model info: ${JSON.stringify({ id: info.id, name: info.name, family: info.family })}`);
@@ -185,8 +189,8 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
                 this.outputChannel
             );
         }
-
-        this.outputChannel.info(`Generating response with model: ${model.name}, api type: ${model._config.apiType ?? 'responses'}`);
+        var reasoningEffort = (options as RequestOptionsLike).modelConfiguration?.reasoningEffort ?? model._config.reasoningEffort ?? 'undefined';
+        this.outputChannel.info(`Generating response with model: ${model.name}, api type: ${model._config.apiType ?? 'responses'}, reasoning effort: ${reasoningEffort}`);
 
         try {
             // Stream the response

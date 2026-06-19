@@ -9,18 +9,14 @@ export const REASONING_EFFORT_VALUES = [
     'max',
 ] as const;
 
-export interface ReasoningEffortConfigurationSchema {
-    properties: {
-        reasoningEffort: {
-            type: 'string';
-            title: string;
-            enum: readonly ReasoningEffort[];
-            enumItemLabels: readonly string[];
-            enumDescriptions: readonly string[];
-            default: ReasoningEffort;
-            group: string;
-        };
-    };
+export interface ReasoningEffortPropertySchema {
+    type: 'string';
+    title: string;
+    enum: readonly ReasoningEffort[];
+    enumItemLabels: readonly string[];
+    enumDescriptions: readonly string[];
+    default: ReasoningEffort;
+    group: string;
 }
 
 export interface RequestOptionsLike {
@@ -39,36 +35,20 @@ const REASONING_EFFORT_DESCRIPTIONS = [
     "Maximum reasoning budget"
 ] as const;
 
-const BASE_REASONING_EFFORT_SCHEMA: Omit<ReasoningEffortConfigurationSchema, 'properties'> & {
-    properties: Omit<ReasoningEffortConfigurationSchema['properties'], 'reasoningEffort'> & {
-        reasoningEffort: Omit<ReasoningEffortConfigurationSchema['properties']['reasoningEffort'], 'default'>;
+export function createReasoningEffortSchema(defaultValue: ReasoningEffort): ReasoningEffortPropertySchema {
+    return {
+        type: 'string',
+        title: 'Reasoning Effort',
+        enum: REASONING_EFFORT_VALUES,
+        enumItemLabels: REASONING_EFFORT_LABELS,
+        enumDescriptions: REASONING_EFFORT_DESCRIPTIONS,
+        default: defaultValue,
+        group: 'navigation'
     };
-} = {
-    properties: {
-        reasoningEffort: {
-            type: 'string',
-            title: 'Reasoning Effort',
-            enum: REASONING_EFFORT_VALUES,
-            enumItemLabels: REASONING_EFFORT_LABELS,
-            enumDescriptions: REASONING_EFFORT_DESCRIPTIONS,
-            group: 'navigation'
-        }
-    }
-};
+}
 
 export function isReasoningEffortValue(v: unknown): v is ReasoningEffort {
     return typeof v === 'string' && REASONING_EFFORT_VALUES.includes(v as ReasoningEffort);
-}
-
-export function createReasoningEffortSchema(defaultValue: ReasoningEffort): ReasoningEffortConfigurationSchema {
-    return {
-        properties: {
-            reasoningEffort: {
-                ...BASE_REASONING_EFFORT_SCHEMA.properties.reasoningEffort,
-                default: defaultValue,
-            }
-        }
-    };
 }
 
 export function getConfiguredReasoningEffort(

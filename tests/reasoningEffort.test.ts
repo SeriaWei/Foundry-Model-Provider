@@ -17,8 +17,8 @@ describe('reasoningEffort utilities', () => {
 
     it('should create schema with model default value', () => {
         const schema = createReasoningEffortSchema('high');
-        expect(schema.properties.reasoningEffort.default).toBe('high');
-        expect(schema.properties.reasoningEffort.enum).toEqual([
+        expect(schema.default).toBe('high');
+        expect(schema.enum).toEqual([
             'minimal',
             'low',
             'medium',
