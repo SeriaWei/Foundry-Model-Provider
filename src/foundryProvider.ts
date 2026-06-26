@@ -150,7 +150,10 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
         if (isReasoningEffortValue(model.reasoningEffort)) {
             info.configurationSchema = {
                 properties: {
-                    reasoningEffort: createReasoningEffortSchema(model.reasoningEffort)
+                    reasoningEffort: createReasoningEffortSchema(
+                        model.reasoningEffort,
+                        model.supportedReasoningEfforts
+                    )
                 }
             };
         }

@@ -35,14 +35,25 @@ const REASONING_EFFORT_DESCRIPTIONS = [
     "Maximum reasoning budget"
 ] as const;
 
-export function createReasoningEffortSchema(defaultValue: ReasoningEffort): ReasoningEffortPropertySchema {
+export function createReasoningEffortSchema(
+    defaultValue: ReasoningEffort,
+    supportedValues?: readonly ReasoningEffort[]
+): ReasoningEffortPropertySchema {
+    const values = supportedValues ?? REASONING_EFFORT_VALUES;
+    const indices = values.map(v => REASONING_EFFORT_VALUES.indexOf(v));
+    const labels = indices.map(i => REASONING_EFFORT_LABELS[i]);
+    const descriptions = indices.map(i => REASONING_EFFORT_DESCRIPTIONS[i]);
+
+    // Ensure default is in the supported list
+    const defaultEffort = values.includes(defaultValue) ? defaultValue : values[0] ?? 'medium';
+
     return {
         type: 'string',
         title: 'Reasoning Effort',
-        enum: REASONING_EFFORT_VALUES,
-        enumItemLabels: REASONING_EFFORT_LABELS,
-        enumDescriptions: REASONING_EFFORT_DESCRIPTIONS,
-        default: defaultValue,
+        enum: values,
+        enumItemLabels: labels,
+        enumDescriptions: descriptions,
+        default: defaultEffort,
         group: 'navigation'
     };
 }
