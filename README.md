@@ -35,6 +35,24 @@ After installing the extension, configure it in VS Code Settings:
 
 Customize `foundryModelProvider.models` in settings to add or modify available models:
 
+#### Model Configuration Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✅ | Deployment name / model ID used in API calls |
+| `name` | string | ✅ | Display name shown in the model picker |
+| `family` | string | ✅ | Model family (e.g., gpt-4o, gpt-4.1, o1) |
+| `version` | string | ❌ | Model version string |
+| `maxInputTokens` | number | ❌ | Maximum input tokens supported (default: 128000) |
+| `maxOutputTokens` | number | ❌ | Maximum output tokens supported (default: 16384) |
+| `capabilities` | object | ❌ | Model capabilities (imageInput, toolCalling, thinking) |
+| `apiType` | string | ❌ | API type: `"responses"` or `"completions"` (default: `"responses"`) |
+| `reasoningEffort` | string | ❌ | Default reasoning effort: `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"` |
+| `supportedReasoningEfforts` | string[] | ❌ | Restrict the reasoning effort dropdown to a subset of values. If not set, all 6 values are shown. |
+| `isUserSelectable` | boolean | ❌ | Whether the model appears in the model picker (default: `true`) |
+
+**Example models:**
+
 ```json
 "foundryModelProvider.models": [
    {
@@ -50,11 +68,12 @@ Customize `foundryModelProvider.models` in settings to add or modify available m
             "thinking": true
       },
       "apiType": "completions",
-      "reasoningEffort": "high"
+      "reasoningEffort": "high",
+      "supportedReasoningEfforts": ["low", "medium", "high"]
    },
    {
-      "id": "gpt-5.3-codex-1",
-      "name": "GPT-5.3-Codex-1",
+      "id": "gpt-5.3-codex",
+      "name": "GPT-5.3-Codex",
       "family": "Foundry",
       "version": "2026-02-24",
       "maxInputTokens": 400000,
