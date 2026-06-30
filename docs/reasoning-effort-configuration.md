@@ -36,16 +36,17 @@ flowchart LR
 
 ```ts
 export type ReasoningEffortValue =
+  | "none"
   | "minimal"
   | "low"
   | "medium"
   | "high"
-  | "xhigh"
-  | "max";
+  | "xhigh";
 
 export interface ModelDescriptor {
   id: string;
   name: string;
+  supportsReasoning?: boolean;
   defaultReasoningEffort?: string;
   configurationSchema?: {
     properties: {
@@ -80,12 +81,12 @@ export interface RequestOptionsLike {
 
 ```ts
 const REASONING_EFFORT_VALUES: readonly ReasoningEffortValue[] = [
+  "none",
   "minimal",
   "low",
   "medium",
   "high",
   "xhigh",
-  "max",
 ];
 
 export function isReasoningEffortValue(v: unknown): v is ReasoningEffortValue {
@@ -107,14 +108,14 @@ const BASE_REASONING_EFFORT_SCHEMA = {
       type: "string",
       title: "Reasoning Effort",
       enum: REASONING_EFFORT_VALUES,
-      enumItemLabels: ["Minimal", "Low", "Medium", "High", "XHigh", "Max"],
+      enumItemLabels: ["None", "Minimal", "Low", "Medium", "High", "XHigh"],
       enumDescriptions: [
+        "No reasoning budget",
         "Smallest reasoning budget",
         "Low reasoning budget",
         "Balanced reasoning budget",
         "High reasoning budget",
         "Very high reasoning budget",
-        "Maximum reasoning budget",
       ],
       default: "medium",
       group: "navigation",
@@ -143,7 +144,7 @@ export function createReasoningEffortSchema(defaultValue: ReasoningEffortValue) 
 ```ts
 function attachSchemaIfSupported(model: ModelDescriptor): ModelDescriptor {
   const effort = model.defaultReasoningEffort;
-  if (!isReasoningEffortValue(effort)) {
+  if (!model.supportsReasoning || !isReasoningEffortValue(effort)) {
     return model;
   }
   return {
@@ -155,7 +156,7 @@ function attachSchemaIfSupported(model: ModelDescriptor): ModelDescriptor {
 
 行为规范：
 
-- 仅当模型默认值合法时展示下拉项。
+- 仅当模型支持 reasoning 且默认值合法时展示下拉项。
 - 缺失或非法时不展示，避免误导用户。
 
 ### 4.4 请求阶段读取用户选择并回退
@@ -223,7 +224,7 @@ requestBody.reasoning = {
 1. 只在 UI 层做校验，导致非法值进入请求体。
 2. Responses 模式直接赋值 `reasoning`，覆盖了已有 `summary`、`exclude` 等字段。
 3. 类型定义过宽（`string`）且无运行时兜底。
-4. 不同 Provider 接受值不一致（例如 `xhigh`、`max`）。
+4. 不同 Provider 接受值不一致（例如 `none`、`xhigh`）。
 
 防护建议：
 

@@ -8,9 +8,10 @@ import {
 
 describe('reasoningEffort utilities', () => {
     it('should validate reasoning effort values', () => {
+        expect(isReasoningEffortValue('none')).toBe(true);
         expect(isReasoningEffortValue('minimal')).toBe(true);
         expect(isReasoningEffortValue('medium')).toBe(true);
-        expect(isReasoningEffortValue('max')).toBe(true);
+        expect(isReasoningEffortValue('max')).toBe(false);
         expect(isReasoningEffortValue('invalid')).toBe(false);
         expect(isReasoningEffortValue(undefined)).toBe(false);
     });
@@ -19,28 +20,28 @@ describe('reasoningEffort utilities', () => {
         const schema = createReasoningEffortSchema('high');
         expect(schema.default).toBe('high');
         expect(schema.enum).toEqual([
+            'none',
             'minimal',
             'low',
             'medium',
             'high',
             'xhigh',
-            'max',
         ]);
         expect(schema.enumItemLabels).toEqual([
+            'None',
             'Minimal',
             'Low',
             'Medium',
             'High',
             'XHigh',
-            'Max',
         ]);
         expect(schema.enumDescriptions).toEqual([
+            "No reasoning budget",
             "Smallest reasoning budget",
             "Low reasoning budget",
             "Balanced reasoning budget",
             "High reasoning budget",
             "Very high reasoning budget",
-            "Maximum reasoning budget"
         ]);
     });
 
@@ -59,7 +60,7 @@ describe('reasoningEffort utilities', () => {
 
     it('should fall back to first supported value when default is not in supported list', () => {
         const supported = ['low', 'medium'] as const;
-        const schema = createReasoningEffortSchema('max', supported);
+        const schema = createReasoningEffortSchema('xhigh', supported);
         expect(schema.enum).toEqual(['low', 'medium']);
         expect(schema.default).toBe('low');
     });

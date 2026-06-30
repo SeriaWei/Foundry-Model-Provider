@@ -58,6 +58,32 @@ function createMockModelConfig(overrides: Partial<FoundryModelConfig> = {}): Fou
     };
 }
 
+async function drainStream<T>(stream: AsyncGenerator<T>): Promise<void> {
+    for await (const _part of stream) {
+        // Exhaust the generator so the API call is made.
+    }
+}
+
+async function collectStream<T>(stream: AsyncGenerator<T>): Promise<T[]> {
+    const parts: T[] = [];
+    for await (const part of stream) {
+        parts.push(part);
+    }
+    return parts;
+}
+
+function createEmptyStream(): AsyncGenerator<never> {
+    return (async function* () {})();
+}
+
+function createStream<T>(items: T[]): AsyncGenerator<T> {
+    return (async function* () {
+        for (const item of items) {
+            yield item;
+        }
+    })();
+}
+
 describe('BaseFoundryClient Error Wrapping', () => {
     let outputChannel: vscode.LogOutputChannel;
 
@@ -257,5 +283,224 @@ describe('ChatCompletionOptions', () => {
         expect(options.model.capabilities.imageInput).toBe(true);
         expect(options.model.capabilities.toolCalling).toBe(true);
         expect(options.model.capabilities.thinking).toBe(true);
+    });
+});
+
+describe('Reasoning effort request parameters', () => {
+    it('should pass reasoning effort to the Responses API as reasoning.effort', async () => {
+        const outputChannel = createMockOutputChannel();
+        const client = new ResponsesAPIClient('https://test.com', 'test-key', outputChannel);
+        const streamMock = vi.fn().mockReturnValue(createEmptyStream());
+        (client as unknown as { client: { responses: { stream: typeof streamMock } } }).client.responses.stream = streamMock;
+
+        await drainStream(client.streamChatCompletion({
+            model: createMockModelConfig({
+                capabilities: {
+                    imageInput: false,
+                    toolCalling: true,
+                    thinking: true,
+                },
+                reasoningEffort: 'medium',
+            }),
+            messages: [],
+            requestOptions: {
+                modelConfiguration: { reasoningEffort: 'high' },
+            },
+            defaultParameters: { temperature: 0.7 },
+        }, { isCancellationRequested: false, onCancellationRequested: vi.fn() }));
+
+        expect(streamMock).toHaveBeenCalledWith(expect.objectContaining({
+            reasoning: {
+                effort: 'high',
+                summary: 'auto',
+            },
+        }));
+        expect(streamMock.mock.calls[0][0]).not.toHaveProperty('temperature');
+    });
+
+    it('should pass reasoning effort to Chat Completions as reasoning_effort', async () => {
+        const outputChannel = createMockOutputChannel();
+        const client = new ChatCompletionsAPIClient('https://test.com', 'test-key', outputChannel);
+        const createMock = vi.fn().mockResolvedValue(createEmptyStream());
+        (client as unknown as { client: { chat: { completions: { create: typeof createMock } } } }).client.chat.completions.create = createMock;
+
+        await drainStream(client.streamChatCompletion({
+            model: createMockModelConfig({
+                apiType: 'completions',
+                capabilities: {
+                    imageInput: false,
+                    toolCalling: true,
+                    thinking: true,
+                },
+                reasoningEffort: 'medium',
+            }),
+            messages: [],
+            requestOptions: {
+                modelConfiguration: { reasoningEffort: 'low' },
+            },
+            defaultParameters: { temperature: 0.7 },
+        }, { isCancellationRequested: false, onCancellationRequested: vi.fn() }));
+
+        expect(createMock).toHaveBeenCalledWith(expect.objectContaining({
+            reasoning_effort: 'low',
+        }));
+        expect(createMock.mock.calls[0][0]).not.toHaveProperty('temperature');
+    });
+
+    it('should not send reasoning effort to non-thinking models', async () => {
+        const outputChannel = createMockOutputChannel();
+        const client = new ResponsesAPIClient('https://test.com', 'test-key', outputChannel);
+        const streamMock = vi.fn().mockReturnValue(createEmptyStream());
+        (client as unknown as { client: { responses: { stream: typeof streamMock } } }).client.responses.stream = streamMock;
+
+        await drainStream(client.streamChatCompletion({
+            model: createMockModelConfig({ reasoningEffort: 'medium' }),
+            messages: [],
+            requestOptions: {
+                modelConfiguration: { reasoningEffort: 'high' },
+            },
+            defaultParameters: { temperature: 0.7 },
+        }, { isCancellationRequested: false, onCancellationRequested: vi.fn() }));
+
+        expect(streamMock.mock.calls[0][0]).not.toHaveProperty('reasoning');
+        expect(streamMock).toHaveBeenCalledWith(expect.objectContaining({
+            temperature: 0.7,
+        }));
+    });
+});
+
+describe('ResponsesAPIClient request and stream mapping', () => {
+    it('should build Responses API request parameters for tools and max output tokens', async () => {
+        const outputChannel = createMockOutputChannel();
+        const client = new ResponsesAPIClient('https://test.com', 'test-key', outputChannel);
+        const streamMock = vi.fn().mockReturnValue(createEmptyStream());
+        (client as unknown as { client: { responses: { stream: typeof streamMock } } }).client.responses.stream = streamMock;
+
+        await drainStream(client.streamChatCompletion({
+            model: createMockModelConfig(),
+            messages: [],
+            tools: [{
+                name: 'get_weather',
+                description: 'Get weather',
+                inputSchema: { type: 'object', properties: { city: { type: 'string' } } },
+            } as vscode.LanguageModelChatTool],
+            modelOptions: {
+                temperature: 0.2,
+                maxTokens: 512,
+            },
+            defaultParameters: { temperature: 0.7 },
+        }, { isCancellationRequested: false, onCancellationRequested: vi.fn() }));
+
+        expect(streamMock).toHaveBeenCalledWith(expect.objectContaining({
+            model: 'gpt-4',
+            input: [],
+            stream: true,
+            temperature: 0.2,
+            max_output_tokens: 512,
+            tools: [{
+                type: 'function',
+                name: 'get_weather',
+                description: 'Get weather',
+                parameters: { type: 'object', properties: { city: { type: 'string' } } },
+                strict: false,
+            }],
+        }));
+    });
+
+    it('should convert Responses API stream events into response parts', async () => {
+        const outputChannel = createMockOutputChannel();
+        const client = new ResponsesAPIClient('https://test.com', 'test-key', outputChannel);
+        const streamMock = vi.fn().mockReturnValue(createStream([
+            { type: 'response.output_text.delta', delta: 'Hello' },
+            { type: 'response.reasoning_summary_text.delta', delta: 'Thinking' },
+            { type: 'response.output_item.added', item: { type: 'function_call', id: 'item_1', call_id: 'call_1', name: 'get_weather' } },
+            { type: 'response.function_call_arguments.delta', item_id: 'item_1', delta: '{"city"' },
+            { type: 'response.function_call_arguments.done', item_id: 'item_1', arguments: '{"city":"Beijing"}' },
+            { type: 'response.output_item.done', item: { type: 'function_call', id: 'item_1', call_id: 'call_1', name: 'get_weather', arguments: '{"city":"Beijing"}' } },
+            { type: 'response.completed', response: { usage: { input_tokens: 3, output_tokens: 5, total_tokens: 8 } } },
+        ]));
+        (client as unknown as { client: { responses: { stream: typeof streamMock } } }).client.responses.stream = streamMock;
+
+        const parts = await collectStream(client.streamChatCompletion({
+            model: createMockModelConfig(),
+            messages: [],
+            defaultParameters: { temperature: 0.7 },
+        }, { isCancellationRequested: false, onCancellationRequested: vi.fn() }));
+
+        expect(parts).toEqual([
+            { type: 'text', value: 'Hello' },
+            { type: 'thinking', value: 'Thinking' },
+            { type: 'toolCall', callId: 'call_1', name: 'get_weather', input: { city: 'Beijing' } },
+            { type: 'usage', value: { prompt_tokens: 3, completion_tokens: 5, total_tokens: 8 } },
+        ]);
+    });
+});
+
+describe('ChatCompletionsAPIClient request and stream mapping', () => {
+    it('should build Chat Completions request parameters for required tools and max tokens', async () => {
+        const outputChannel = createMockOutputChannel();
+        const client = new ChatCompletionsAPIClient('https://test.com', 'test-key', outputChannel);
+        const createMock = vi.fn().mockResolvedValue(createEmptyStream());
+        (client as unknown as { client: { chat: { completions: { create: typeof createMock } } } }).client.chat.completions.create = createMock;
+
+        await drainStream(client.streamChatCompletion({
+            model: createMockModelConfig({ apiType: 'completions' }),
+            messages: [],
+            tools: [{
+                name: 'get_weather',
+                description: 'Get weather',
+                inputSchema: { type: 'object', properties: { city: { type: 'string' } } },
+            } as vscode.LanguageModelChatTool],
+            toolMode: vscode.LanguageModelChatToolMode.Required,
+            modelOptions: {
+                temperature: 0.3,
+                maxTokens: 256,
+            },
+            defaultParameters: { temperature: 0.7 },
+        }, { isCancellationRequested: false, onCancellationRequested: vi.fn() }));
+
+        expect(createMock).toHaveBeenCalledWith(expect.objectContaining({
+            model: 'gpt-4',
+            messages: [],
+            stream: true,
+            stream_options: { include_usage: true },
+            temperature: 0.3,
+            max_completion_tokens: 256,
+            tool_choice: 'required',
+            tools: [{
+                type: 'function',
+                function: {
+                    name: 'get_weather',
+                    description: 'Get weather',
+                    parameters: { type: 'object', properties: { city: { type: 'string' } } },
+                },
+            }],
+        }));
+    });
+
+    it('should convert Chat Completions stream chunks into response parts', async () => {
+        const outputChannel = createMockOutputChannel();
+        const client = new ChatCompletionsAPIClient('https://test.com', 'test-key', outputChannel);
+        const createMock = vi.fn().mockResolvedValue(createStream([
+            { choices: [{ delta: { reasoning_content: 'Thinking' } }] },
+            { choices: [{ delta: { content: 'Hello' } }] },
+            { choices: [{ delta: { tool_calls: [{ index: 0, id: 'call_1', function: { name: 'search', arguments: '{"q"' } }] } }] },
+            { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: ':"foundry"}' } }] }, finish_reason: 'tool_calls' }] },
+            { choices: [], usage: { prompt_tokens: 2, completion_tokens: 4, total_tokens: 6 } },
+        ]));
+        (client as unknown as { client: { chat: { completions: { create: typeof createMock } } } }).client.chat.completions.create = createMock;
+
+        const parts = await collectStream(client.streamChatCompletion({
+            model: createMockModelConfig({ apiType: 'completions' }),
+            messages: [],
+            defaultParameters: { temperature: 0.7 },
+        }, { isCancellationRequested: false, onCancellationRequested: vi.fn() }));
+
+        expect(parts).toEqual([
+            { type: 'thinking', value: 'Thinking' },
+            { type: 'text', value: 'Hello' },
+            { type: 'toolCall', callId: 'call_1', name: 'search', input: { q: 'foundry' } },
+            { type: 'usage', value: { prompt_tokens: 2, completion_tokens: 4, total_tokens: 6 } },
+        ]);
     });
 });

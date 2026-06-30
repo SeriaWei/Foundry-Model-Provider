@@ -24,11 +24,12 @@ function hasReasoningEffortCandidate(
     requestOptions: RequestOptionsLike | undefined,
     model: FoundryModelConfig
 ): boolean {
-    return requestOptions?.modelConfiguration?.reasoningEffort !== undefined
+    return model.capabilities.thinking && (
+        requestOptions?.modelConfiguration?.reasoningEffort !== undefined
         || requestOptions?.configuration?.reasoningEffort !== undefined
         || requestOptions?.modelOptions?.reasoningEffort !== undefined
         || model.reasoningEffort !== undefined
-        || model.capabilities.thinking;
+    );
 }
 
 /**

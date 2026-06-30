@@ -61,7 +61,7 @@
                 "thinking": false
               },
               "apiType": "responses",
-              "reasoningEffort": "medium"
+              "isUserSelectable": true
             }
           ],
           "description": "List of available Foundry models to register",
@@ -126,12 +126,12 @@
               "reasoningEffort": {
                 "type": "string",
                 "enum": [
+                  "none",
                   "minimal",
                   "low",
                   "medium",
                   "high",
-                  "xhigh",
-                  "max"
+                  "xhigh"
                 ],
                 "description": "Default reasoning effort for reasoning models (o1, o3, o4, etc.). Also controls which options appear in the model picker dropdown."
               },
@@ -140,12 +140,12 @@
                 "items": {
                   "type": "string",
                   "enum": [
+                    "none",
                     "minimal",
                     "low",
                     "medium",
                     "high",
-                    "xhigh",
-                    "max"
+                    "xhigh"
                   ]
                 },
                 "description": "Optional. Restrict the reasoning effort dropdown to a subset of values. If not set, all 6 values are shown."

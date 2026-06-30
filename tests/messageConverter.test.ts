@@ -73,6 +73,17 @@ describe('convertToOpenAIMessages', () => {
         });
     });
 
+    it('should preserve assistant message name', () => {
+        const messages = [createAssistantMessage([createTextPart('Tool result acknowledged')], 'assistant-name')];
+        const result = convertToOpenAIMessages(messages);
+
+        expect(result[0]).toEqual({
+            role: 'assistant',
+            content: 'Tool result acknowledged',
+            name: 'assistant-name',
+        });
+    });
+
     it('should convert user message with tool result', () => {
         const messages = [createUserMessage([createToolResultPart('call_123', ['Tool response text'])])];
         const result = convertToOpenAIMessages(messages);
@@ -81,6 +92,21 @@ describe('convertToOpenAIMessages', () => {
         expect(result[0]).toEqual({
             role: 'tool',
             content: 'Tool response text',
+            tool_call_id: 'call_123',
+        });
+    });
+
+    it('should stringify and join mixed tool result content', () => {
+        const messages = [createUserMessage([createToolResultPart('call_123', [
+            createTextPart('Line one'),
+            { ok: true },
+            'Line three',
+        ])])];
+        const result = convertToOpenAIMessages(messages);
+
+        expect(result[0]).toEqual({
+            role: 'tool',
+            content: 'Line one\n{"ok":true}\nLine three',
             tool_call_id: 'call_123',
         });
     });
@@ -146,6 +172,16 @@ describe('convertToOpenAIMessages', () => {
                 detail: 'auto',
             },
         });
+    });
+
+    it('should convert non-image data parts to text content', () => {
+        const dataPart = createDataPart(new TextEncoder().encode('plain text payload'), 'text/plain');
+        const messages = [createUserMessage([dataPart])];
+        const result = convertToOpenAIMessages(messages);
+
+        expect(result[0].content).toEqual([
+            { type: 'text', text: 'plain text payload' },
+        ]);
     });
 
     it('should convert multiple messages in order', () => {

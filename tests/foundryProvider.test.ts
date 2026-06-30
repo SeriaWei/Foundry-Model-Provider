@@ -18,6 +18,9 @@ vi.mock('../src/foundryApiClient', () => {
 });
 
 vi.mock('../src/types', () => ({
+    CustomDataPartMimeTypes: {
+        Usage: 'usage',
+    },
     getConfig: vi.fn().mockReturnValue({
         endpoint: 'https://test.foundry.azure.com',
         models: [
@@ -85,9 +88,50 @@ function createMockSecretStorage(): vscode.SecretStorage {
     };
 }
 
+function createStream<T>(items: T[]): AsyncGenerator<T> {
+    return (async function* () {
+        for (const item of items) {
+            yield item;
+        }
+    })();
+}
+
+function createMockModelInfo(): FoundryModelInfo {
+    return {
+        id: 'Foundry:gpt-4',
+        name: 'GPT-4',
+        family: 'GPT-4',
+        version: '',
+        maxInputTokens: 128000,
+        maxOutputTokens: 16384,
+        capabilities: {
+            imageInput: true,
+            toolCalling: true,
+        },
+        _config: {
+            id: 'gpt-4',
+            name: 'GPT-4',
+            family: 'GPT-4',
+            maxInputTokens: 128000,
+            maxOutputTokens: 16384,
+            capabilities: {
+                imageInput: true,
+                toolCalling: true,
+                thinking: true,
+            },
+            apiType: 'responses',
+            reasoningEffort: 'medium',
+        },
+    } as unknown as FoundryModelInfo;
+}
+
 const PREPARE_MODEL_OPTIONS: vscode.PrepareLanguageModelChatModelOptions = {
     silent: true,
 };
+
+const LanguageModelThinkingPart = (vscode as unknown as {
+    LanguageModelThinkingPart: new (value: string) => { value: string };
+}).LanguageModelThinkingPart;
 
 function expectModelInfoArray(
     result: vscode.ProviderResult<FoundryModelInfo[]>
@@ -246,7 +290,7 @@ describe('FoundryLanguageModelChatProvider', () => {
             expect(schema).toBeDefined();
             expect(schema?.properties.reasoningEffort.default).toBe('high');
             expect(schema?.properties.reasoningEffort.enum).toContain('minimal');
-            expect(schema?.properties.reasoningEffort.enum).toContain('max');
+            expect(schema?.properties.reasoningEffort.enum).toContain('xhigh');
 
             localProvider.dispose();
         });
@@ -328,31 +372,7 @@ describe('FoundryLanguageModelChatProvider', () => {
 
     describe('provideLanguageModelChatResponse', () => {
         it('should throw NoPermissions when API key is not configured', async () => {
-            const modelInfo: FoundryModelInfo = {
-                id: 'Foundry:gpt-4',
-                name: 'GPT-4',
-                family: 'GPT-4',
-                version: '',
-                maxInputTokens: 128000,
-                maxOutputTokens: 16384,
-                capabilities: {
-                    imageInput: true,
-                    toolCalling: true,
-                },
-                _config: {
-                    id: 'gpt-4',
-                    name: 'GPT-4',
-                    family: 'GPT-4',
-                    maxInputTokens: 128000,
-                    maxOutputTokens: 16384,
-                    capabilities: {
-                        imageInput: true,
-                        toolCalling: true,
-                        thinking: false,
-                    },
-                    apiType: 'responses',
-                },
-            } as unknown as FoundryModelInfo;
+            const modelInfo = createMockModelInfo();
 
             const mockProgress = {
                 report: vi.fn(),
@@ -370,6 +390,63 @@ describe('FoundryLanguageModelChatProvider', () => {
                     { isCancellationRequested: false, onCancellationRequested: vi.fn() }
                 )
             ).rejects.toThrow();
+        });
+
+        it('should report streamed text, thinking, tool call, and usage parts', async () => {
+            const modelInfo = createMockModelInfo();
+            const streamChatCompletion = vi.fn().mockReturnValue(createStream([
+                { type: 'text', value: 'Hello' },
+                { type: 'thinking', value: 'Thinking' },
+                { type: 'toolCall', callId: 'call_1', name: 'get_weather', input: { city: 'Beijing' } },
+                { type: 'usage', value: { prompt_tokens: 3, completion_tokens: 5, total_tokens: 8 } },
+            ]));
+            (provider as unknown as { client: { streamChatCompletion: typeof streamChatCompletion } }).client = { streamChatCompletion };
+
+            const mockProgress = {
+                report: vi.fn(),
+            };
+            const options = {
+                tools: [],
+                toolMode: vscode.LanguageModelChatToolMode.Auto,
+                modelConfiguration: { reasoningEffort: 'high' },
+            } as unknown as vscode.ProvideLanguageModelChatResponseOptions;
+
+            await provider.provideLanguageModelChatResponse(
+                modelInfo,
+                [],
+                options,
+                mockProgress,
+                { isCancellationRequested: false, onCancellationRequested: vi.fn() }
+            );
+
+            expect(streamChatCompletion).toHaveBeenCalledWith(expect.objectContaining({
+                model: modelInfo._config,
+                messages: [],
+                requestOptions: options,
+                defaultParameters: {
+                    temperature: 0.7,
+                    topP: 1.0,
+                },
+            }), expect.objectContaining({ isCancellationRequested: false }));
+
+            expect(mockProgress.report).toHaveBeenCalledTimes(4);
+            expect(mockProgress.report.mock.calls[0][0]).toBeInstanceOf(vscode.LanguageModelTextPart);
+            expect(mockProgress.report.mock.calls[0][0].value).toBe('Hello');
+            expect(mockProgress.report.mock.calls[1][0]).toBeInstanceOf(LanguageModelThinkingPart);
+            expect(mockProgress.report.mock.calls[1][0].value).toBe('Thinking');
+            expect(mockProgress.report.mock.calls[2][0]).toBeInstanceOf(vscode.LanguageModelToolCallPart);
+            expect(mockProgress.report.mock.calls[2][0]).toMatchObject({
+                callId: 'call_1',
+                name: 'get_weather',
+                input: { city: 'Beijing' },
+            });
+            expect(mockProgress.report.mock.calls[3][0]).toBeInstanceOf(vscode.LanguageModelDataPart);
+            expect(mockProgress.report.mock.calls[3][0].mimeType).toBe('usage');
+            expect(JSON.parse(new TextDecoder().decode(mockProgress.report.mock.calls[3][0].data))).toEqual({
+                prompt_tokens: 3,
+                completion_tokens: 5,
+                total_tokens: 8,
+            });
         });
     });
 });
