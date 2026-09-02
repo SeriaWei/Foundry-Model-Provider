@@ -16,6 +16,10 @@ export interface FoundryModelConfig {
     maxInputTokens: number;
     /** Maximum output tokens supported */
     maxOutputTokens: number;
+    /** Sampling temperature. null disables the parameter for this model */
+    temperature?: number | null;
+    /** Top-p sampling parameter. null disables the parameter for this model */
+    topP?: number | null;
     /** Model capabilities */
     capabilities: FoundryModelCapabilities;
     /** Which API to use. Defaults to 'responses' */
@@ -38,7 +42,7 @@ export type FoundryApiType = 'responses' | 'completions';
 /**
  * Reasoning effort for reasoning models (o1, o3, o4, etc.)
  */
-export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+export type ReasoningEffort = 'none' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 /**
  * Capabilities of a Foundry model

@@ -48,7 +48,7 @@ Customize `foundryModelProvider.models` in settings to add or modify available m
 | `capabilities` | object | ❌ | Model capabilities (imageInput, toolCalling, thinking) |
 | `apiType` | string | ❌ | API type: `"responses"` or `"completions"` (default: `"responses"`) |
 | `reasoningEffort` | string | ❌ | Default reasoning effort: `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"` |
-| `supportedReasoningEfforts` | string[] | ❌ | Restrict the reasoning effort dropdown to a subset of values. If not set, all 6 values are shown. |
+| `supportedReasoningEfforts` | string[] | ❌ | Restrict the reasoning effort dropdown to a subset of values. If not set, all 7 values are shown. |
 | `isUserSelectable` | boolean | ❌ | Whether the model appears in the model picker (default: `true`) |
 
 **Example models:**

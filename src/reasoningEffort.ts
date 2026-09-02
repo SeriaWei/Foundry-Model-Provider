@@ -7,6 +7,7 @@ export const REASONING_EFFORT_VALUES = [
     'medium',
     'high',
     'xhigh',
+    'max',
 ] as const;
 
 export interface ReasoningEffortPropertySchema {
@@ -25,7 +26,7 @@ export interface RequestOptionsLike {
     modelOptions?: Record<string, unknown>;
 }
 
-const REASONING_EFFORT_LABELS = ['None', 'Minimal', 'Low', 'Medium', 'High', 'XHigh'] as const;
+const REASONING_EFFORT_LABELS = ['None', 'Minimal', 'Low', 'Medium', 'High', 'XHigh', 'Max'] as const;
 const REASONING_EFFORT_DESCRIPTIONS = [
     "No reasoning budget",
     "Smallest reasoning budget",
@@ -33,6 +34,7 @@ const REASONING_EFFORT_DESCRIPTIONS = [
     "Balanced reasoning budget",
     "High reasoning budget",
     "Very high reasoning budget",
+    "Maximum reasoning budget",
 ] as const;
 
 export function createReasoningEffortSchema(

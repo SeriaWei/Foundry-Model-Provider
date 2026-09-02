@@ -41,7 +41,8 @@ export type ReasoningEffortValue =
   | "low"
   | "medium"
   | "high"
-  | "xhigh";
+  | "xhigh"
+  | "max";
 
 export interface ModelDescriptor {
   id: string;
@@ -87,6 +88,7 @@ const REASONING_EFFORT_VALUES: readonly ReasoningEffortValue[] = [
   "medium",
   "high",
   "xhigh",
+  "max",
 ];
 
 export function isReasoningEffortValue(v: unknown): v is ReasoningEffortValue {
@@ -108,7 +110,7 @@ const BASE_REASONING_EFFORT_SCHEMA = {
       type: "string",
       title: "Reasoning Effort",
       enum: REASONING_EFFORT_VALUES,
-      enumItemLabels: ["None", "Minimal", "Low", "Medium", "High", "XHigh"],
+      enumItemLabels: ["None", "Minimal", "Low", "Medium", "High", "XHigh", "Max"],
       enumDescriptions: [
         "No reasoning budget",
         "Smallest reasoning budget",

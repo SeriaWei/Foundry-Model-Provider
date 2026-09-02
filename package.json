@@ -10,7 +10,7 @@
     "url": "https://github.com/SeriaWei/Foundry-Model-Provider"
   },
   "engines": {
-    "vscode": "^1.120.0"
+    "vscode": "^1.125.0"
   },
   "enabledApiProposals": [
     "chatProvider"
@@ -94,6 +94,24 @@
                 "default": 16384,
                 "description": "Maximum output tokens supported"
               },
+              "temperature": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 2,
+                "description": "Optional model-specific sampling temperature (0-2). Set to null to omit it from API requests."
+              },
+              "topP": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Optional model-specific top-p sampling parameter. Set to null to omit it from API requests."
+              },
               "capabilities": {
                 "type": "object",
                 "properties": {
@@ -131,7 +149,8 @@
                   "low",
                   "medium",
                   "high",
-                  "xhigh"
+                  "xhigh",
+                  "max"
                 ],
                 "description": "Default reasoning effort for reasoning models (o1, o3, o4, etc.). Also controls which options appear in the model picker dropdown."
               },
@@ -145,7 +164,8 @@
                     "low",
                     "medium",
                     "high",
-                    "xhigh"
+                    "xhigh",
+                    "max"
                   ]
                 },
                 "description": "Optional. Restrict the reasoning effort dropdown to a subset of values. If not set, all 6 values are shown."

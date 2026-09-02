@@ -11,7 +11,7 @@ describe('reasoningEffort utilities', () => {
         expect(isReasoningEffortValue('none')).toBe(true);
         expect(isReasoningEffortValue('minimal')).toBe(true);
         expect(isReasoningEffortValue('medium')).toBe(true);
-        expect(isReasoningEffortValue('max')).toBe(false);
+        expect(isReasoningEffortValue('max')).toBe(true);
         expect(isReasoningEffortValue('invalid')).toBe(false);
         expect(isReasoningEffortValue(undefined)).toBe(false);
     });
@@ -26,6 +26,7 @@ describe('reasoningEffort utilities', () => {
             'medium',
             'high',
             'xhigh',
+            'max',
         ]);
         expect(schema.enumItemLabels).toEqual([
             'None',
@@ -34,6 +35,7 @@ describe('reasoningEffort utilities', () => {
             'Medium',
             'High',
             'XHigh',
+            'Max',
         ]);
         expect(schema.enumDescriptions).toEqual([
             "No reasoning budget",
@@ -42,6 +44,7 @@ describe('reasoningEffort utilities', () => {
             "Balanced reasoning budget",
             "High reasoning budget",
             "Very high reasoning budget",
+            "Maximum reasoning budget",
         ]);
     });
 

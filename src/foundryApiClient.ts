@@ -32,6 +32,20 @@ function hasReasoningEffortCandidate(
     );
 }
 
+function resolveSamplingParameter(
+    modelValue: number | null | undefined,
+    requestValue: unknown,
+    defaultValue: number | undefined
+): number | undefined {
+    const value = requestValue !== undefined
+        ? requestValue
+        : modelValue !== undefined
+            ? modelValue
+            : defaultValue;
+
+    return value === null ? undefined : value as number | undefined;
+}
+
 /**
  * Response part emitted during streaming
  */
@@ -205,10 +219,22 @@ export class ResponsesAPIClient extends BaseFoundryClient {
                 summary: reasoningPayload['summary'] ?? 'auto'
             };
         } else {
-            if (modelOptions?.temperature !== undefined) {
-                requestParams.temperature = modelOptions.temperature as number;
-            } else if (defaultParameters.temperature !== undefined) {
-                requestParams.temperature = defaultParameters.temperature;
+            const temperature = resolveSamplingParameter(
+                model.temperature,
+                modelOptions?.temperature,
+                defaultParameters.temperature
+            );
+            if (temperature !== undefined) {
+                requestParams.temperature = temperature;
+            }
+
+            const topP = resolveSamplingParameter(
+                model.topP,
+                modelOptions?.topP,
+                defaultParameters.topP
+            );
+            if (topP !== undefined) {
+                requestParams.top_p = topP;
             }
         }
 
@@ -383,13 +409,31 @@ export class ChatCompletionsAPIClient extends BaseFoundryClient {
             }) as OpenAI.Chat.ChatCompletionMessageParam[],
             stream: true,
             stream_options: { include_usage: true },
-            temperature: (modelOptions?.temperature as number) ?? defaultParameters.temperature ?? 0.7,
         };
+
+        const temperature = resolveSamplingParameter(
+            model.temperature,
+            modelOptions?.temperature,
+            defaultParameters.temperature
+        );
+        if (temperature !== undefined) {
+            requestParams.temperature = temperature;
+        }
+
+        const topP = resolveSamplingParameter(
+            model.topP,
+            modelOptions?.topP,
+            defaultParameters.topP
+        );
+        if (topP !== undefined) {
+            requestParams.top_p = topP;
+        }
 
         if (hasReasoningEffortCandidate(requestOptions, model)) {
             const reasoningEffort = resolveReasoningEffort(requestOptions, model.reasoningEffort);
             // Reasoning models do not support temperature — remove it and set reasoning_effort
             delete requestParams.temperature;
+            delete requestParams.top_p;
             (requestParams as unknown as Record<string, unknown>)['reasoning_effort'] = reasoningEffort;
         }
 

@@ -338,13 +338,14 @@ describe('Reasoning effort request parameters', () => {
             requestOptions: {
                 modelConfiguration: { reasoningEffort: 'low' },
             },
-            defaultParameters: { temperature: 0.7 },
+            defaultParameters: { temperature: 0.7, topP: 0.9 },
         }, { isCancellationRequested: false, onCancellationRequested: vi.fn() }));
 
         expect(createMock).toHaveBeenCalledWith(expect.objectContaining({
             reasoning_effort: 'low',
         }));
         expect(createMock.mock.calls[0][0]).not.toHaveProperty('temperature');
+        expect(createMock.mock.calls[0][0]).not.toHaveProperty('top_p');
     });
 
     it('should not send reasoning effort to non-thinking models', async () => {
@@ -370,6 +371,24 @@ describe('Reasoning effort request parameters', () => {
 });
 
 describe('ResponsesAPIClient request and stream mapping', () => {
+    it('should use model sampling parameters and omit parameters set to null', async () => {
+        const outputChannel = createMockOutputChannel();
+        const client = new ResponsesAPIClient('https://test.com', 'test-key', outputChannel);
+        const streamMock = vi.fn().mockReturnValue(createEmptyStream());
+        (client as unknown as { client: { responses: { stream: typeof streamMock } } }).client.responses.stream = streamMock;
+
+        await drainStream(client.streamChatCompletion({
+            model: createMockModelConfig({ temperature: 0.4, topP: null }),
+            messages: [],
+            defaultParameters: { temperature: 0.7, topP: 0.9 },
+        }, { isCancellationRequested: false, onCancellationRequested: vi.fn() }));
+
+        expect(streamMock).toHaveBeenCalledWith(expect.objectContaining({
+            temperature: 0.4,
+        }));
+        expect(streamMock.mock.calls[0][0]).not.toHaveProperty('top_p');
+    });
+
     it('should build Responses API request parameters for tools and max output tokens', async () => {
         const outputChannel = createMockOutputChannel();
         const client = new ResponsesAPIClient('https://test.com', 'test-key', outputChannel);
@@ -437,6 +456,24 @@ describe('ResponsesAPIClient request and stream mapping', () => {
 });
 
 describe('ChatCompletionsAPIClient request and stream mapping', () => {
+    it('should use model sampling parameters and omit parameters set to null', async () => {
+        const outputChannel = createMockOutputChannel();
+        const client = new ChatCompletionsAPIClient('https://test.com', 'test-key', outputChannel);
+        const createMock = vi.fn().mockResolvedValue(createEmptyStream());
+        (client as unknown as { client: { chat: { completions: { create: typeof createMock } } } }).client.chat.completions.create = createMock;
+
+        await drainStream(client.streamChatCompletion({
+            model: createMockModelConfig({ apiType: 'completions', temperature: null, topP: 0.8 }),
+            messages: [],
+            defaultParameters: { temperature: 0.7, topP: 0.9 },
+        }, { isCancellationRequested: false, onCancellationRequested: vi.fn() }));
+
+        expect(createMock).toHaveBeenCalledWith(expect.objectContaining({
+            top_p: 0.8,
+        }));
+        expect(createMock.mock.calls[0][0]).not.toHaveProperty('temperature');
+    });
+
     it('should build Chat Completions request parameters for required tools and max tokens', async () => {
         const outputChannel = createMockOutputChannel();
         const client = new ChatCompletionsAPIClient('https://test.com', 'test-key', outputChannel);
