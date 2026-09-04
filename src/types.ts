@@ -80,6 +80,7 @@ export interface FoundryProviderConfig {
 export interface FoundryModelInfo extends vscode.LanguageModelChatInformation {
     /** Internal config reference */
     isUserSelectable: boolean;
+    isBYOK: boolean;
     /** Optional model picker schema for runtime model configuration */
     configurationSchema?: {
         properties: {

@@ -144,6 +144,7 @@ export class FoundryLanguageModelChatProvider implements vscode.LanguageModelCha
                 toolCalling: model.capabilities.toolCalling
             },
             isUserSelectable: model.isUserSelectable ?? true,
+            isBYOK: true,
             _config: model
         };
 
